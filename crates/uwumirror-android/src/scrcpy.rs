@@ -229,8 +229,10 @@ async fn pump_audio(mut socket: TcpStream, player: AudioPlayer) -> std::io::Resu
     loop {
         if let Packet::Media { data, .. } = read_packet(&mut socket).await? {
             let samples: Vec<i16> = data
-                .chunks_exact(2)
-                .map(|b| i16::from_le_bytes([b[0], b[1]]))
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|&b| i16::from_le_bytes(b))
                 .collect();
             player.push_i16(&samples);
         }

@@ -22,10 +22,10 @@ const NO_DATA: [u8; 4] = [0x00, 0x68, 0x34, 0x00];
 
 /// Decrypts one packet's payload in place.
 pub fn decrypt(key: &[u8; 16], iv: &[u8; 16], payload: &mut [u8]) {
-    let whole = payload.len() / 16 * 16;
     let mut cipher = Aes128CbcDec::new(key.into(), iv.into());
-    for block in payload[..whole].chunks_exact_mut(16) {
-        cipher.decrypt_block_mut(block.into());
+    // The tail shorter than a block is left alone: senders leave it clear.
+    for block in payload.as_chunks_mut::<16>().0 {
+        cipher.decrypt_block_mut(block.as_mut_slice().into());
     }
 }
 
@@ -158,8 +158,8 @@ mod tests {
         let plain: Vec<u8> = (0..37).collect();
         let mut data = plain.clone();
         let mut encryptor = cbc::Encryptor::<aes::Aes128>::new(&key.into(), &iv.into());
-        for block in data[..32].chunks_exact_mut(16) {
-            encryptor.encrypt_block_mut(block.into());
+        for block in data[..32].as_chunks_mut::<16>().0 {
+            encryptor.encrypt_block_mut(block.as_mut_slice().into());
         }
         assert_ne!(data[..32], plain[..32]);
         decrypt(&key, &iv, &mut data);
