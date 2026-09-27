@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+target/
+*.tsbuildinfo
+apps/*/src-tauri/gen/schemas/
+
+# Downloaded at build time (scripts/fetch-scrcpy-server.mjs), checked by hash
+apps/desktop/src-tauri/resources/scrcpy-server
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Keys and certificates never belong in this public repository
+*.key
+*.pem
+*.p12
+*.pfx
+*.password
+*.secret
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Agent worktrees
+.claude/worktrees/

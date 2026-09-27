@@ -1,0 +1,136 @@
+// The installer speaks like UwUMirror's default, playful tone, in German or English.
+
+const de = {
+  welcomeTitle: 'Hallo! Ich bin Nyu',
+  welcomeBody:
+    'Ich richte UwUMirror in ein paar Sekunden auf deinem {computer} ein. Dann spiegeln iPhone, iPad, Mac und Android ihren Bildschirm direkt zu dir.',
+  againTitle: 'Schön, dich wiederzusehen!',
+  againBody:
+    'UwUMirror {installed} ist schon da. Ich bringe es auf {version}, deine Einstellungen bleiben, wo sie sind.',
+  install: 'Installieren',
+  update: 'Aktualisieren',
+  reinstall: 'Neu installieren',
+  options: 'Optionen',
+  fewerOptions: 'Weniger Optionen',
+  folder: 'Speicherort',
+  change: 'Ändern …',
+  desktopShortcut: 'Verknüpfung auf dem Desktop',
+  runningTitle: 'UwUMirror ist gerade offen',
+  runningBody:
+    'Ich schließe es kurz, damit ich weitermachen kann. Laufende Spiegelungen werden dabei beendet.',
+  closeAndContinue: 'Schließen und weiter',
+  back: 'Zurück',
+  progressInstall: 'Nyu richtet alles ein …',
+  progressUninstall: 'Nyu räumt auf …',
+  quotes: [
+    'Poliert den Spiegel …',
+    'Wischt Fingerabdrücke vom Glas …',
+    'Stimmt die Wellen ab …',
+    'Winkt dem Handy zu …',
+    'Übt Ohrenwackeln …',
+    'Rückt Pixel zurecht …',
+    'Lauscht nach AirPlay …',
+  ],
+  doneTitle: 'Fertig! ✧',
+  doneBody: 'UwUMirror ist bereit. Deine Geräte können jetzt hierher spiegeln.',
+  tipsTitle: 'Kleine Tipps',
+  tips: [
+    'iPhone, iPad oder Mac: im Kontrollzentrum auf Bildschirmsynchronisierung tippen und diesen Rechner wählen.',
+    'Android: in den Entwickleroptionen „Kabelloses Debugging“ einschalten und per QR-Code koppeln – oder per USB.',
+    'Fragt die Firewall beim ersten Start, erlaube private Netzwerke. Sonst finden dich deine Geräte nicht.',
+  ],
+  start: 'UwUMirror starten',
+  close: 'Schließen',
+  errorTitle: 'Hoppla, das hat nicht geklappt',
+  retry: 'Nochmal versuchen',
+  uninstallTitle: 'Schade, dass du gehst …',
+  uninstallBody: 'Ich entferne UwUMirror von diesem {computer}.',
+  removeInstead: 'Deinstallieren …',
+  computerWindows: 'PC',
+  computerMac: 'Mac',
+  computerLinux: 'Rechner',
+  keepData: 'Einstellungen und AirPlay-Schlüssel behalten',
+  keepDataHint:
+    'Praktisch, falls du wiederkommst: Deine Apple-Geräte erkennen diesen Rechner dann wieder. Sonst lösche ich beides.',
+  uninstall: 'Deinstallieren',
+  keep: 'Doch behalten',
+  goodbyeTitle: 'Tschüss! (｡•́︿•̀｡)',
+  goodbyeBody: 'UwUMirror ist entfernt. Komm gern wieder vorbei.',
+  soundOn: 'Ton an',
+  soundOff: 'Ton aus',
+  minimize: 'Minimieren',
+  devBuild: 'Entwicklungs-Build: UwUMirror ist hier nicht mit drin.',
+  sandbox: 'Testmodus: Es wird nur in einem Testordner installiert.',
+  footer: 'Version {version} · Open Source',
+};
+
+const en: typeof de = {
+  welcomeTitle: "Hi! I'm Nyu",
+  welcomeBody:
+    "I'll set up UwUMirror on your {computer} in a few seconds. Then iPhone, iPad, Mac and Android mirror their screens right to you.",
+  againTitle: 'Nice to see you again!',
+  againBody:
+    "UwUMirror {installed} is already here. I'll bring it to {version}, and your settings stay where they are.",
+  install: 'Install',
+  update: 'Update',
+  reinstall: 'Reinstall',
+  options: 'Options',
+  fewerOptions: 'Fewer options',
+  folder: 'Location',
+  change: 'Change …',
+  desktopShortcut: 'Shortcut on the desktop',
+  runningTitle: 'UwUMirror is open right now',
+  runningBody: "I'll close it for a moment so I can carry on. Running mirrors will be stopped.",
+  closeAndContinue: 'Close and continue',
+  back: 'Back',
+  progressInstall: 'Nyu is setting everything up …',
+  progressUninstall: 'Nyu is tidying up …',
+  quotes: [
+    'Polishing the mirror …',
+    'Wiping fingerprints off the glass …',
+    'Tuning the waves …',
+    'Waving at the phone …',
+    'Practicing ear wiggles …',
+    'Nudging pixels into place …',
+    'Listening for AirPlay …',
+  ],
+  doneTitle: 'All done! ✧',
+  doneBody: 'UwUMirror is ready. Your devices can mirror to it now.',
+  tipsTitle: 'Little tips',
+  tips: [
+    'iPhone, iPad or Mac: tap Screen Mirroring in Control Center and pick this computer.',
+    'Android: turn on "Wireless debugging" in the developer options and pair with the QR code – or use USB.',
+    'If the firewall asks on the first start, allow private networks. Otherwise your devices won’t find you.',
+  ],
+  start: 'Start UwUMirror',
+  close: 'Close',
+  errorTitle: "Oops, that didn't work",
+  retry: 'Try again',
+  uninstallTitle: 'Sad to see you go …',
+  uninstallBody: "I'll remove UwUMirror from this {computer}.",
+  removeInstead: 'Uninstall …',
+  computerWindows: 'PC',
+  computerMac: 'Mac',
+  computerLinux: 'computer',
+  keepData: 'Keep settings and the AirPlay key',
+  keepDataHint:
+    'Handy if you come back: your Apple devices will recognize this computer again. Otherwise I delete both.',
+  uninstall: 'Uninstall',
+  keep: 'Keep it',
+  goodbyeTitle: 'Bye! (｡•́︿•̀｡)',
+  goodbyeBody: 'UwUMirror is removed. Come back any time.',
+  soundOn: 'Sound on',
+  soundOff: 'Sound off',
+  minimize: 'Minimize',
+  devBuild: "Development build: UwUMirror isn't packed inside.",
+  sandbox: 'Test mode: installs into a test folder only.',
+  footer: 'Version {version} · Open source',
+};
+
+export type Texts = typeof de;
+
+export const texts: Texts = navigator.language.toLowerCase().startsWith('de') ? de : en;
+
+export function fill(template: string, values: Record<string, string>) {
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => values[key] ?? '');
+}

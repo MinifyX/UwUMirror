@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "uwumirror-setup-ui",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@uwumirror/setup", "dev"],
+      "port": 1430
+    },
+    {
+      "name": "uwumirror-desktop-ui",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@uwumirror/desktop", "dev"],
+      "port": 1420
+    }
+  ]
+}

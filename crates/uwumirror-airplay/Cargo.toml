@@ -1,0 +1,32 @@
+[package]
+name = "uwumirror-airplay"
+description = "An AirPlay screen mirroring and audio receiver"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+uwumirror-core.workspace = true
+
+aes = "0.8"
+cbc = "0.1"
+ctr = "0.9"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+mdns-sd.workspace = true
+parking_lot.workspace = true
+plist = "1"
+rand.workspace = true
+serde.workspace = true
+sha2 = "0.10"
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+
+[build-dependencies]
+cc = "1"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

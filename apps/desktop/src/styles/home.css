@@ -1,0 +1,364 @@
+/* The start page, its cards, the pairing dialog and the toasts. */
+
+.home {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 28px 32px;
+}
+
+.home-hero {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  max-width: 1040px;
+  margin: 0 auto 22px;
+}
+
+.home-scene {
+  width: 220px;
+  flex: none;
+}
+
+.home-title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.home-text {
+  max-width: 520px;
+  margin: 0;
+  line-height: 1.55;
+  color: var(--uwu-muted);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
+  max-width: 1040px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+.card {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  border-radius: var(--uwu-radius-card);
+  border: 1px solid var(--uwu-border);
+  background: var(--uwu-surface);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--uwu-pink-tint);
+  color: var(--uwu-pink-ink);
+  flex: none;
+}
+
+.card-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.card-heading h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.card-sub {
+  margin: 1px 0 0;
+  font-size: 12.5px;
+  color: var(--uwu-muted);
+}
+
+.card-foot {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--uwu-muted);
+}
+
+/* A state with a dot: online is mint, working pulses pink, trouble is amber. */
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.status-line .dot,
+.running-item .dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--uwu-offline);
+}
+
+.status-line[data-state='online'] .dot {
+  background: var(--uwu-online);
+}
+
+.status-line[data-state='starting'] .dot {
+  background: var(--uwu-pink);
+  animation: tab-pulse 1s ease-in-out infinite;
+}
+
+.status-line[data-state='error'] {
+  color: var(--uwu-alarm);
+}
+
+.status-line[data-state='error'] .dot {
+  background: var(--uwu-alarm);
+}
+
+.steps {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.steps li::marker {
+  color: var(--uwu-pink-solid);
+  font-weight: 700;
+}
+
+.hint {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--uwu-radius-control);
+  background: var(--uwu-elevated);
+  border: 1px solid var(--uwu-hairline);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.hint > .icon {
+  margin-top: 2px;
+  color: var(--uwu-muted);
+}
+
+.hint[data-tone='warning'] > .icon {
+  color: var(--uwu-alarm);
+}
+
+.hint p {
+  margin: 0 0 6px;
+}
+
+.hint-title {
+  font-weight: 700;
+}
+
+.hint-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.empty-line {
+  margin: 0;
+  color: var(--uwu-muted);
+  font-size: 13.5px;
+}
+
+.device-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.device,
+.running-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 12px;
+  border-radius: var(--uwu-radius-control);
+  border: 1px solid var(--uwu-hairline);
+  background: var(--uwu-canvas);
+}
+
+.device > .icon,
+.running-item > .icon {
+  color: var(--uwu-muted);
+}
+
+.device-name,
+.running-name {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+
+.device-name b,
+.running-name b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.device-meta {
+  font-size: 12px;
+  color: var(--uwu-muted);
+}
+
+.how-to summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--uwu-pink-ink);
+}
+
+.how-to .steps {
+  margin-top: 10px;
+}
+
+.running {
+  display: grid;
+  gap: 8px;
+  max-width: 1040px;
+  margin: 0 auto 16px;
+}
+
+.running-item {
+  background: var(--uwu-surface);
+  border-color: var(--uwu-border);
+}
+
+/* ── Pairing ───────────────────────────────────────────── */
+
+.pair-qr {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 18px;
+  align-items: center;
+}
+
+.qr-frame {
+  width: 200px;
+  height: 200px;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border-radius: var(--uwu-radius-card);
+  background: #fff;
+  border: 1px solid var(--uwu-border);
+}
+
+.qr-frame svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pair-qr .status-line {
+  grid-column: 1 / -1;
+}
+
+.pair-done {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.pair-scene {
+  width: 220px;
+}
+
+/* ── Inputs in settings rows ───────────────────────────── */
+
+.inline-form {
+  margin: 0;
+}
+
+.input {
+  font: inherit;
+  width: 260px;
+  max-width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--uwu-radius-control);
+  border: 1px solid var(--uwu-border);
+  background: var(--uwu-canvas);
+  color: var(--uwu-ink);
+}
+
+/* ── Toasts ────────────────────────────────────────────── */
+
+.toasts {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 20;
+  display: grid;
+  gap: 8px;
+  width: min(380px, calc(100vw - 36px));
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px 10px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--uwu-border);
+  background: var(--uwu-surface);
+  box-shadow: 0 18px 40px -20px rgba(20, 16, 22, 0.45);
+  font-size: 13px;
+  line-height: 1.45;
+  animation: toast-in 180ms ease-out;
+}
+
+.toast span {
+  flex: 1;
+}
+
+.toast[data-tone='error'] {
+  border-color: color-mix(in srgb, var(--uwu-alarm) 55%, transparent);
+  color: var(--uwu-alarm);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (max-width: 760px) {
+  .home-hero {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .pair-qr {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}

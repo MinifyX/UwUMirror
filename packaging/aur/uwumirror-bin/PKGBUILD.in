@@ -1,0 +1,38 @@
+# Maintainer: MinifyX <https://github.com/MinifyX>
+#
+# Written by scripts/aur.mjs from packaging/aur/uwumirror-bin/PKGBUILD.in in
+# https://github.com/MinifyX/UwUMirror for each release; edit the template
+# there, not this file. It repacks the release's .deb, like other Tauri -bin
+# packages. UwUMirror doesn't update itself: pacman does.
+
+pkgname=uwumirror-bin
+_pkgname=uwumirror
+pkgver=@PKGVER@
+_version=@VERSION@
+pkgrel=1
+pkgdesc='AirPlay and Android screen mirroring to your own computer'
+arch=('x86_64' 'aarch64')
+url='https://github.com/MinifyX/UwUMirror'
+license=('AGPL-3.0-only')
+depends=('webkit2gtk-4.1' 'gtk3' 'alsa-lib')
+# Everything here is found at runtime; without it UwUMirror still starts and
+# says what is missing where it is missing.
+optdepends=(
+  'android-tools: Android mirroring over wireless debugging or USB (adb)'
+  'ffmpeg: sound for AirPlay screen mirroring (AAC-ELD, through libavcodec)'
+  'gst-libav: H.264 video decoding for the mirrored picture (WebKitGTK)'
+  'gst-plugins-good: H.264 video playback for the mirrored picture (WebKitGTK)'
+)
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+options=('!strip' '!debug')
+source_x86_64=("$pkgname-$pkgver-x86_64.deb::$url/releases/download/v$_version/UwUMirror-linux-x64.deb")
+source_aarch64=("$pkgname-$pkgver-aarch64.deb::$url/releases/download/v$_version/UwUMirror-linux-arm64.deb")
+sha256sums_x86_64=('@SHA256_X86_64@')
+sha256sums_aarch64=('@SHA256_AARCH64@')
+
+package() {
+  # makepkg has unpacked the .deb; the files are in its data archive.
+  bsdtar -xf data.tar.* -C "$pkgdir"
+  chmod -R u=rwX,go=rX "$pkgdir/usr"
+}

@@ -1,0 +1,21 @@
+{
+  "{name} spiegelt jetzt.": "{name} is mirroring now.",
+  "{name}: Spiegelung abgebrochen ({reason})": "{name}: mirroring broke off ({reason})",
+  "{name} hat die Spiegelung beendet.": "{name} stopped mirroring.",
+  "{name} lässt sich nicht spiegeln: {error}": "Can't mirror {name}: {error}",
+  "FFmpeg gefunden – der Ton kommt beim nächsten Spiegeln mit.": "Found FFmpeg – sound comes along from the next mirroring on.",
+  "FFmpeg ist noch nicht zu finden.": "FFmpeg can't be found yet.",
+  "Einstellungen (Strg+,)": "Settings (Ctrl+,)",
+  "Einstellungen": "Settings",
+  "Minimieren": "Minimize",
+  "Maximieren": "Maximize",
+  "Verkleinern": "Restore",
+  "Schließen": "Close",
+  "Streams": "Streams",
+  "Start": "Home",
+  "Start (Strg+0)": "Home (Ctrl+0)",
+  "{name} (Strg+{number})": "{name} (Ctrl+{number})",
+  "Spiegelung beenden": "Stop mirroring",
+  "{name}: Spiegelung beenden": "{name}: stop mirroring",
+  "AirPlay-Ton": "AirPlay audio"
+}

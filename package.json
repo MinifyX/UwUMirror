@@ -1,0 +1,22 @@
+{
+  "name": "uwumirror",
+  "version": "0.1.0-beta.1",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @uwumirror/desktop dev",
+    "tauri": "pnpm --filter @uwumirror/desktop tauri",
+    "build": "pnpm --filter @uwumirror/desktop build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "prettier --check . && node scripts/check-i18n.mjs",
+    "format": "prettier --write .",
+    "build:setup": "node scripts/build-setup.mjs"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  }
+}
