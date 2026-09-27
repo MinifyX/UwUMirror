@@ -40,7 +40,7 @@ and compare with the line in the file.
 UwUMirror itself is one program. A few things it takes from the system when
 they are there, and tells you in the app when they are not:
 
-- **Sound for AirPlay** needs FFmpeg's `libavcodec` (FFmpeg 4 to 8). Apple
+- **Sound for AirPlay** needs FFmpeg's `libavcodec` (FFmpeg 4 to 9). Apple
   sends mirrored sound as AAC-ELD; the one standalone decoder for it
   (Fraunhofer's FDK) can't be combined with the AGPL, so UwUMirror uses the
   FFmpeg on your system instead of shipping a decoder. Linux: the `ffmpeg` package. macOS: `brew install ffmpeg`.
@@ -296,7 +296,7 @@ mit der Zeile in der Datei vergleichen.
 UwUMirror selbst ist ein Programm. Ein paar Dinge nimmt es vom System, wenn sie
 da sind, und sagt in der App Bescheid, wenn nicht:
 
-- **Ton über AirPlay** braucht FFmpegs `libavcodec` (FFmpeg 4 bis 8). Apple
+- **Ton über AirPlay** braucht FFmpegs `libavcodec` (FFmpeg 4 bis 9). Apple
   schickt den Ton beim Spiegeln als AAC-ELD; der einzige eigenständige
   Decoder dafür (Fraunhofers FDK) verträgt sich nicht mit der AGPL, darum nutzt
   UwUMirror das FFmpeg deines Systems, statt selbst einen mitzubringen. Linux: das Paket `ffmpeg`. macOS:

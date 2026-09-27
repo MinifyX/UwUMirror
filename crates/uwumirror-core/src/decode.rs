@@ -12,8 +12,8 @@
 //!
 //! Only a handful of functions and the leading fields of three structs are
 //! used — `AVPacket`'s, `AVFrame`'s and `AVCodecParameters`' — which have
-//! kept their layout since FFmpeg 4 (libavcodec 58) up to FFmpeg 8
-//! (libavcodec 62). Everything else is set through the functions.
+//! kept their layout since FFmpeg 4 (libavcodec 58) up to FFmpeg 9
+//! (libavcodec 63). Everything else is set through the functions.
 
 use std::ffi::{c_int, c_void};
 use std::ptr;
@@ -150,7 +150,7 @@ struct Api {
 }
 
 /// libavcodec major version → the libavutil major it was released with.
-const VERSIONS: [(u32, u32); 5] = [(62, 60), (61, 59), (60, 58), (59, 57), (58, 56)];
+const VERSIONS: [(u32, u32); 6] = [(63, 61), (62, 60), (61, 59), (60, 58), (59, 57), (58, 56)];
 
 fn candidates(name: &str, major: u32) -> Vec<String> {
     let mut names = Vec::new();

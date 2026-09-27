@@ -92,7 +92,7 @@ pairing, FairPlay, H.264 only (the HEVC bit stays off, so senders never try it).
      NAL length prefixes become start codes.
 7. **Audio** (`sound.rs`): RTP, the payload AES-128-CBC encrypted per packet
    (a tail shorter than a block stays clear), decoded by FFmpeg (AAC-ELD,
-   AAC-LC, ALAC — `core/decode.rs` loads libavcodec and libavutil 58–62 at
+   AAC-LC, ALAC — `core/decode.rs` loads libavcodec and libavutil 58–63 at
    runtime and uses only the stable leading fields of three structs).
 8. **Timing** (`timing.rs`): NTP-style requests to the sender every 3 s.
 
