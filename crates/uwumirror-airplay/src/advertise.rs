@@ -7,7 +7,7 @@
 //! Newer features (HomeKit pairing, HEVC, AirPlay 2 buffered audio) stay off,
 //! because every sender still speaks this older dialect.
 
-use mdns_sd::{ServiceDaemon, ServiceInfo};
+use mdns_sd::{IfKind, ServiceDaemon, ServiceInfo};
 use plist::{Dictionary, Value};
 
 use crate::pairing::Identity;
@@ -183,6 +183,11 @@ pub struct Announcement {
 impl Announcement {
     pub fn start(identity: &Identity, name: &str, port: u16) -> Result<Self, mdns_sd::Error> {
         let daemon = ServiceDaemon::new()?;
+        // IPv4 only, like the listeners: every socket a session opens is
+        // IPv4, so a sender that picked an IPv6 address from the record would
+        // get the control connection refused — or, on a Mac, land on the
+        // system's own AirPlay receiver, which holds port 7000 over IPv6 too.
+        daemon.disable_interface(IfKind::IPv6)?;
         let host = format!(
             "uwumirror-{}.local.",
             identity.device_id_hex().to_lowercase()
