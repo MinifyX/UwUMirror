@@ -51,5 +51,10 @@
   "AirPlay, iPhone, iPad und Mac sind Marken von Apple Inc., Android ist eine Marke von Google LLC. UwUMirror hat mit beiden nichts zu tun.": "AirPlay, iPhone, iPad and Mac are trademarks of Apple Inc., Android is a trademark of Google LLC. UwUMirror has nothing to do with either.",
   "Video-Decoder": "Video decoder",
   "Automatisch nimmt WebCodecs, wo es geht. Zeigt ein Stream kein Bild, hilft vielleicht der andere Weg. Gilt ab dem nächsten Stream.": "Automatic uses WebCodecs where it can. If a stream shows no picture, the other way may help. Applies from the next stream on.",
-  "Automatisch": "Automatic"
+  "Automatisch": "Automatic",
+  "Ausführliches Protokoll": "Detailed log",
+  "Schreibt jeden Schritt mit. Hilft, wenn etwas nicht klappt und du einen Fehler melden willst.": "Writes down every step. Helps when something doesn't work and you want to report it.",
+  "Protokoll": "Log",
+  "uwumirror.log, und vom Start davor uwumirror.old.log. Es bleibt auf diesem Computer.": "uwumirror.log, and uwumirror.old.log from the start before. It stays on this computer.",
+  "Ordner öffnen": "Open folder"
 }

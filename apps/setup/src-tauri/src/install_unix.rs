@@ -110,6 +110,7 @@ impl Layout {
         let data = vec![
             library.join("Application Support").join(APP_ID),
             library.join("Caches").join(APP_ID),
+            library.join("Logs").join(APP_ID),
             library.join("WebKit").join(APP_ID),
             library
                 .join("Saved Application State")

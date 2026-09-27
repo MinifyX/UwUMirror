@@ -85,6 +85,8 @@ export const api = {
   androidDownloadAdb: () => invoke<string>('android_download_adb'),
   androidChooseAdb: (path: string | null) => invoke<void>('android_choose_adb', { path }),
   openLink: (url: string) => invoke<void>('open_link', { url }),
+  logDetail: (on: boolean) => invoke<void>('log_detail', { on }),
+  openLogFolder: () => invoke<void>('open_log_folder'),
 };
 
 /** Stream starts, changes and ends. */

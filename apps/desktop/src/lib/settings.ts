@@ -36,6 +36,8 @@ export type Settings = {
   fullscreenNewStreams: boolean;
   /** For systems where one of the two decoders misbehaves. */
   decoder: DecoderSetting;
+  /** Every step into the log file, for an issue. */
+  detailedLog: boolean;
 
   airplayEnabled: boolean;
   /** What iPhones show in their AirPlay list; empty means "UwUMirror (computer)". */
@@ -61,6 +63,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showNewStreams: true,
   fullscreenNewStreams: false,
   decoder: 'auto',
+  detailedLog: false,
   airplayEnabled: true,
   receiverName: '',
   airplayResolution: '1080p',
@@ -92,6 +95,7 @@ export function sanitize(raw: unknown): Settings {
     showNewStreams: bool(input.showNewStreams, d.showNewStreams),
     fullscreenNewStreams: bool(input.fullscreenNewStreams, d.fullscreenNewStreams),
     decoder: oneOf(input.decoder, ['auto', 'webcodecs', 'mediasource'] as const, d.decoder),
+    detailedLog: bool(input.detailedLog, d.detailedLog),
     airplayEnabled: bool(input.airplayEnabled, d.airplayEnabled),
     receiverName: text(input.receiverName, 60),
     airplayResolution: oneOf(

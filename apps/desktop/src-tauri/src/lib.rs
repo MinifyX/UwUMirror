@@ -2,6 +2,7 @@
 //! their streams to the page (see `hub.rs`), and offers the page its commands.
 
 mod hub;
+mod log;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -312,17 +313,27 @@ fn open_link(app: tauri::AppHandle, url: String) -> Result<()> {
     app.opener().open_url(url, None::<&str>).map_err(text)
 }
 
-pub fn run() {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,mdns_sd=warn".into()),
-        )
-        .init();
+/// The detailed log on or off (Settings → General).
+#[tauri::command]
+fn log_detail(on: bool) {
+    log::set_detailed(on);
+}
 
+/// Shows the log folder in the file manager, for attaching the log to an issue.
+#[tauri::command]
+fn open_log_folder(app: tauri::AppHandle) -> Result<()> {
+    let dir = app.path().app_log_dir().map_err(text)?;
+    std::fs::create_dir_all(&dir).map_err(text)?;
+    app.opener()
+        .open_path(dir.to_string_lossy(), None::<&str>)
+        .map_err(text)
+}
+
+pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            log::init(&app.path().app_log_dir()?);
             let data = app.path().app_data_dir()?;
             let server = app.path().resource_dir()?.join("scrcpy-server");
             let hub = Hub::new(app.handle().clone());
@@ -369,6 +380,8 @@ pub fn run() {
             android_download_adb,
             android_choose_adb,
             open_link,
+            log_detail,
+            open_log_folder,
         ])
         .build(tauri::generate_context!())
         .expect("UwUMirror failed to start");

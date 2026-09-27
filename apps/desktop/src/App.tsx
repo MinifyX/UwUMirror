@@ -90,6 +90,11 @@ export function App() {
     };
   }, [setWindowFullscreen]);
 
+  // The log follows its setting, from the start on.
+  useEffect(() => {
+    void api.logDetail(settings.detailedLog).catch(() => undefined);
+  }, [settings.detailedLog]);
+
   // The AirPlay receiver follows the settings.
   useEffect(() => {
     if (settings.airplayEnabled && !computer) return; // the name isn't known yet

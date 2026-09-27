@@ -146,6 +146,32 @@ function General({ settings }: { settings: Settings }) {
           label={t('Neue Streams im Vollbild')}
         />
       </Row>
+      <Row
+        label={t('Ausführliches Protokoll')}
+        description={t(
+          'Schreibt jeden Schritt mit. Hilft, wenn etwas nicht klappt und du einen Fehler melden willst.',
+        )}
+      >
+        <Toggle
+          checked={settings.detailedLog}
+          onChange={(detailedLog) => updateSettings({ detailedLog })}
+          label={t('Ausführliches Protokoll')}
+        />
+      </Row>
+      <Row
+        label={t('Protokoll')}
+        description={t(
+          'uwumirror.log, und vom Start davor uwumirror.old.log. Es bleibt auf diesem Computer.',
+        )}
+      >
+        <button
+          onClick={() =>
+            void api.openLogFolder().catch((error) => console.warn('log folder', error))
+          }
+        >
+          {t('Ordner öffnen')}
+        </button>
+      </Row>
     </>
   );
 }
