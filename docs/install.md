@@ -44,9 +44,12 @@ they are there, and tells you in the app when they are not:
   sends mirrored sound as AAC-ELD; the one standalone decoder for it
   (Fraunhofer's FDK) can't be combined with the AGPL, so UwUMirror uses the
   FFmpeg on your system instead of shipping a decoder. Linux: the `ffmpeg` package. macOS: `brew install ffmpeg`.
-  Windows: an FFmpeg build that comes with its DLLs (a "shared" build, with
-  `avcodec-*.dll` in its `bin` folder), that folder on your `PATH`. Without
-  it, the picture comes without sound.
+  Windows: a "shared" build, the one with `avcodec-*.dll` — most easily
+  `winget install Gyan.FFmpeg.Shared` in a command prompt; UwUMirror finds it
+  by itself. That one is x64 only: on Windows on ARM, take a `winarm64`
+  shared build (e.g. from [BtbN](https://github.com/BtbN/FFmpeg-Builds/releases))
+  and put its `bin` folder on your `PATH`. Without FFmpeg, the picture comes
+  without sound.
 - **Android** needs `adb`. On Windows, macOS and Linux x64 UwUMirror offers to
   download Google's platform-tools for you. On Linux arm64 Google has none:
   install your distribution's `adb` / `android-tools` package. An `adb` you
@@ -300,9 +303,12 @@ da sind, und sagt in der App Bescheid, wenn nicht:
   schickt den Ton beim Spiegeln als AAC-ELD; der einzige eigenständige
   Decoder dafür (Fraunhofers FDK) verträgt sich nicht mit der AGPL, darum nutzt
   UwUMirror das FFmpeg deines Systems, statt selbst einen mitzubringen. Linux: das Paket `ffmpeg`. macOS:
-  `brew install ffmpeg`. Windows: eine FFmpeg-Version mit ihren DLLs (ein
-  „shared“-Build, mit `avcodec-*.dll` im Ordner `bin`), dieser Ordner im
-  `PATH`. Ohne sie kommt das Bild ohne Ton.
+  `brew install ffmpeg`. Windows: ein „shared“-Build, der mit
+  `avcodec-*.dll` — am einfachsten `winget install Gyan.FFmpeg.Shared` in
+  der Eingabeaufforderung; UwUMirror findet ihn von selbst. Den gibt es nur
+  für x64: Unter Windows auf ARM einen `winarm64`-shared-Build nehmen (z. B.
+  von [BtbN](https://github.com/BtbN/FFmpeg-Builds/releases)) und seinen
+  Ordner `bin` in den `PATH` aufnehmen. Ohne FFmpeg kommt das Bild ohne Ton.
 - **Android** braucht `adb`. Unter Windows, macOS und Linux x64 bietet
   UwUMirror an, Googles platform-tools für dich herunterzuladen. Für Linux
   arm64 hat Google keine: installiere das Paket `adb` / `android-tools` deiner

@@ -20,7 +20,7 @@ function ffmpegHint(): string {
   switch (platform()) {
     case 'windows':
       return t(
-        'Installiere FFmpeg als „shared“-Build (mit den avcodec-DLLs, z. B. von gyan.dev) und nimm seinen bin-Ordner in den PATH auf.',
+        'Installiere FFmpeg als „shared“-Build, am einfachsten in der Eingabeaufforderung mit winget install Gyan.FFmpeg.Shared. Unter Windows auf ARM: einen „winarm64-shared“-Build und seinen bin-Ordner in den PATH.',
       );
     case 'macos':
       return t('Installiere FFmpeg, zum Beispiel mit Homebrew: brew install ffmpeg');

@@ -6,7 +6,6 @@
   "Laufende Streams": "Running streams",
   "Zeigen": "Show",
   "Beenden": "Stop",
-
   "iPhone, iPad & Mac": "iPhone, iPad & Mac",
   "AirPlay-Empfang": "AirPlay receiver",
   "Aus – iPhones sehen UwUMirror gerade nicht.": "Off – iPhones can't see UwUMirror right now.",
@@ -18,13 +17,11 @@
   "„{name}“ auswählen – fertig.": "Pick “{name}” – done.",
   "Kein Ton beim Spiegeln": "No sound while mirroring",
   "iPhones schicken ihren Ton als AAC-ELD, und den dekodiert UwUMirror mit FFmpeg vom System.": "iPhones send their sound as AAC-ELD, which UwUMirror decodes with the system's FFmpeg.",
-  "Installiere FFmpeg als „shared“-Build (mit den avcodec-DLLs, z. B. von gyan.dev) und nimm seinen bin-Ordner in den PATH auf.": "Install a “shared” build of FFmpeg (the one with the avcodec DLLs, e.g. from gyan.dev) and add its bin folder to your PATH.",
   "Installiere FFmpeg, zum Beispiel mit Homebrew: brew install ffmpeg": "Install FFmpeg, for example with Homebrew: brew install ffmpeg",
   "Installiere FFmpeg über deine Paketverwaltung, zum Beispiel sudo apt install ffmpeg oder sudo pacman -S ffmpeg.": "Install FFmpeg with your package manager, for example sudo apt install ffmpeg or sudo pacman -S ffmpeg.",
   "Sucht…": "Looking…",
   "Erneut nach FFmpeg suchen": "Look for FFmpeg again",
   "Taucht UwUMirror nicht auf? Die Firewall muss eingehende Verbindungen erlauben (TCP {port} und mDNS, UDP 5353).": "UwUMirror doesn't show up? The firewall has to allow incoming connections (TCP {port} and mDNS, UDP 5353).",
-
   "Über kabelloses Debugging oder USB": "Over wireless debugging or USB",
   "Handy koppeln": "Pair a phone",
   "Sucht adb…": "Looking for adb…",
@@ -44,7 +41,6 @@
   "Einstellungen → Über das Telefon → sieben Mal auf „Build-Nummer“ tippen. Das schaltet die Entwickleroptionen frei.": "Settings → About phone → tap “Build number” seven times. That unlocks the developer options.",
   "Einstellungen → System → Entwickleroptionen → „Kabelloses Debugging“ einschalten (ab Android 11). Ältere Handys: „USB-Debugging“ und ein Kabel.": "Settings → System → Developer options → turn on “Wireless debugging” (Android 11 and newer). Older phones: “USB debugging” and a cable.",
   "Hier auf „Handy koppeln“ und auf dem Handy „Gerät über QR-Code koppeln“.": "Click “Pair a phone” here, and “Pair device with QR code” on the phone.",
-
   "Abbrechen": "Cancel",
   "Fertig": "Done",
   "Art der Kopplung": "How to pair",
@@ -66,5 +62,6 @@
   "Koppeln": "Pair",
   "Für Handys, die schon gekoppelt sind (die Adresse steht oben unter „Kabelloses Debugging“) oder mit adb tcpip lauschen.": "For phones that are already paired (the address is at the top of “Wireless debugging”) or listen with adb tcpip.",
   "Verbindet…": "Connecting…",
-  "Verbinden": "Connect"
+  "Verbinden": "Connect",
+  "Installiere FFmpeg als „shared“-Build, am einfachsten in der Eingabeaufforderung mit winget install Gyan.FFmpeg.Shared. Unter Windows auf ARM: einen „winarm64-shared“-Build und seinen bin-Ordner in den PATH.": "Install a “shared” build of FFmpeg, most easily in a command prompt with winget install Gyan.FFmpeg.Shared. On Windows on ARM: a “winarm64-shared” build, with its bin folder on your PATH."
 }
