@@ -40,9 +40,11 @@ Source). That keeps the app small, fast, and free of H.264 patent questions —
 the same reason UwURDP doesn't ship an H.264 decoder either.
 
 The player (`lib/player.ts`) prefers **WebCodecs**: `VideoDecoder` configured
-from the SPS (`avc1.PPCCLL`), Annex B in band, `optimizeForLatency`, every
-decoded frame drawn onto a canvas at once. When WebCodecs is missing or fails
-("not supported" at once, or three errors), it switches to **Media Source**:
+from the SPS (`avc1.PPCCLL`) with an avcC built from SPS and PPS as its
+`description`, frames length-prefixed (the form WebKit's WebCodecs takes too,
+not only Chromium's), `optimizeForLatency`, every decoded frame drawn onto a
+canvas at once. When WebCodecs is missing or fails ("not supported" at once,
+three errors, or 120 frames without a picture), it switches to **Media Source**:
 `lib/mp4.ts` wraps each access unit into a moof + mdat after an init segment
 built from the SPS and PPS, and the player keeps the `<video>` within half a
 second of the live edge. Settings → General → Video decoder forces either.

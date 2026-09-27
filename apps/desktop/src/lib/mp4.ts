@@ -59,6 +59,19 @@ const MATRIX = [
   ...u32(0x40000000),
 ];
 
+/** The body of an avcC box: one SPS, one PPS, 4-byte lengths. WebCodecs
+ * takes the same bytes as a decoder's `description`. */
+export function avcConfig(sps: Uint8Array, pps: Uint8Array): Bytes {
+  return concat([
+    [1, sps[1] ?? 0x64, sps[2] ?? 0, sps[3] ?? 0x28, 0xff, 0xe1],
+    u16(sps.length),
+    sps,
+    [1],
+    u16(pps.length),
+    pps,
+  ]);
+}
+
 /** ftyp + moov for one H.264 track of the given size. */
 export function initSegment(
   sps: Uint8Array,
@@ -66,15 +79,7 @@ export function initSegment(
   width: number,
   height: number,
 ): Bytes {
-  const avcC = box(
-    'avcC',
-    [1, sps[1] ?? 0x64, sps[2] ?? 0, sps[3] ?? 0x28, 0xff, 0xe1],
-    u16(sps.length),
-    sps,
-    [1],
-    u16(pps.length),
-    pps,
-  );
+  const avcC = box('avcC', avcConfig(sps, pps));
   const avc1 = box(
     'avc1',
     [0, 0, 0, 0, 0, 0, ...u16(1)],

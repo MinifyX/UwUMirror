@@ -14,7 +14,7 @@
  */
 
 import { codecString, parameterSets, splitNals, spsSize, type Nal } from './h264';
-import { initSegment, mediaSegment, sample, TIMESCALE } from './mp4';
+import { avcConfig, initSegment, mediaSegment, sample, TIMESCALE } from './mp4';
 import { getSettings } from './settings';
 
 export type PlayerBackend = 'webcodecs' | 'mediasource' | 'none';
@@ -37,11 +37,27 @@ function equal(a: Uint8Array | null, b: Uint8Array): boolean {
   return !!a && a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
+/** Chunks a decoder may swallow without a single picture before it counts
+ * as broken: some engines neither decode nor complain. Two seconds at 60 fps,
+ * far more than any decoder's pipeline holds. */
+const SILENT_CHUNKS = 120;
+
+/** Parameter sets and delimiters stay out of the samples: the sets travel in
+ * the description, delimiters mean nothing outside Annex B. */
+function frameUnits(nals: Nal[]): Uint8Array[] {
+  return nals
+    .filter((nal) => nal.type !== 7 && nal.type !== 8 && nal.type !== 9)
+    .map((nal) => nal.data);
+}
+
 class WebCodecsBackend implements Backend {
   private decoder: VideoDecoder | null = null;
   private sps: Uint8Array | null = null;
+  private pps: Uint8Array | null = null;
   private waitingForKey = true;
   private failures = 0;
+  private decodedAny = false;
+  private sent = 0;
   private readonly context: CanvasRenderingContext2D | null;
 
   constructor(
@@ -52,7 +68,7 @@ class WebCodecsBackend implements Backend {
     this.context = canvas.getContext('2d', { alpha: false, desynchronized: true });
   }
 
-  private configure(sps: Uint8Array) {
+  private configure(sps: Uint8Array, pps: Uint8Array) {
     this.decoder?.close();
     const decoder = new VideoDecoder({
       output: (frame) => {
@@ -64,6 +80,7 @@ class WebCodecsBackend implements Backend {
         this.context?.drawImage(frame, 0, 0, width, height);
         frame.close();
         this.failures = 0;
+        this.decodedAny = true;
         this.onFrame(width, height);
       },
       error: (error) => {
@@ -71,6 +88,7 @@ class WebCodecsBackend implements Backend {
         console.warn('video decoder', error);
         this.decoder = null;
         this.sps = null;
+        this.pps = null;
         this.waitingForKey = true;
         this.failures += 1;
         // "Not supported" won't get better with the next key frame (which an
@@ -78,18 +96,25 @@ class WebCodecsBackend implements Backend {
         if (error.name === 'NotSupportedError' || this.failures >= 3) this.onFail(String(error));
       },
     });
-    // No `description`: the frames are Annex B, with SPS and PPS in band.
-    decoder.configure({ codec: codecString(sps), optimizeForLatency: true });
+    // avcC as `description` and length-prefixed frames: the form every
+    // engine decodes. Annex B without a description is Chromium's extra, and
+    // WebKit's WebCodecs isn't sure to take it.
+    decoder.configure({
+      codec: codecString(sps),
+      description: avcConfig(sps, pps),
+      optimizeForLatency: true,
+    });
     this.decoder = decoder;
     this.sps = sps;
+    this.pps = pps;
   }
 
-  push(key: boolean, pts: number, data: Uint8Array, nals: Nal[]) {
+  push(key: boolean, pts: number, _data: Uint8Array, nals: Nal[]) {
     if (key) {
       const sets = parameterSets(nals);
-      if (sets && (!this.decoder || !equal(this.sps, sets.sps))) {
+      if (sets && (!this.decoder || !equal(this.sps, sets.sps) || !equal(this.pps, sets.pps))) {
         try {
-          this.configure(sets.sps);
+          this.configure(sets.sps, sets.pps);
         } catch (error) {
           this.onFail(String(error));
           return;
@@ -98,9 +123,15 @@ class WebCodecsBackend implements Backend {
       if (this.decoder) this.waitingForKey = false;
     }
     if (this.waitingForKey || !this.decoder || this.decoder.state !== 'configured') return;
+    const units = frameUnits(nals);
+    if (units.length === 0) return;
     this.decoder.decode(
-      new EncodedVideoChunk({ type: key ? 'key' : 'delta', timestamp: pts, data }),
+      new EncodedVideoChunk({ type: key ? 'key' : 'delta', timestamp: pts, data: sample(units) }),
     );
+    this.sent += 1;
+    if (!this.decodedAny && this.sent >= SILENT_CHUNKS) {
+      this.onFail(`${this.sent} chunks, no picture`);
+    }
   }
 
   close() {
@@ -213,18 +244,12 @@ class MediaSourceBackend implements Backend {
         ? TIMESCALE / 60
         : Math.min(Math.max(((pts - this.lastPts) * TIMESCALE) / 1e6, 1), TIMESCALE / 5);
     this.lastPts = pts;
-    // Parameter sets live in the init segment; delimiters mean nothing in MP4.
-    const units = nals.filter((nal) => nal.type !== 7 && nal.type !== 8 && nal.type !== 9);
+    // Parameter sets live in the init segment.
+    const units = frameUnits(nals);
     if (units.length === 0) return;
     this.sequence += 1;
     this.queue.push(
-      mediaSegment(
-        this.sequence,
-        Math.round(this.time),
-        Math.round(duration),
-        sample(units.map((u) => u.data)),
-        key,
-      ),
+      mediaSegment(this.sequence, Math.round(this.time), Math.round(duration), sample(units), key),
     );
     this.time += duration;
     // A page that can't keep up must not hoard minutes of video.
