@@ -5,7 +5,8 @@
 //! (Fraunhofer's FDK) can't be combined with the AGPL. FFmpeg's libavcodec
 //! decodes all three, is LGPL, and is on almost every Linux desktop already
 //! (on macOS one `brew install ffmpeg` away; on Windows it takes a "shared"
-//! build, the one with `avcodec-*.dll`, in a folder on the `PATH`).
+//! build, the one with `avcodec-*.dll`: on the `PATH`, next to an
+//! `ffmpeg.exe` on it, or from winget).
 //! So UwUMirror doesn't ship a decoder: it loads libavcodec and libavutil at
 //! runtime, from the system, and only when a stream actually has sound.
 //!
@@ -155,6 +156,13 @@ fn candidates(name: &str, major: u32) -> Vec<String> {
     let mut names = Vec::new();
     if cfg!(target_os = "windows") {
         names.push(format!("{name}-{major}.dll"));
+        for dir in windows_ffmpeg_dirs() {
+            names.push(
+                dir.join(format!("{name}-{major}.dll"))
+                    .display()
+                    .to_string(),
+            );
+        }
     } else if cfg!(target_os = "macos") {
         for dir in ["/opt/homebrew/lib", "/usr/local/lib", "/opt/local/lib"] {
             names.push(format!("{dir}/lib{name}.{major}.dylib"));
@@ -166,10 +174,74 @@ fn candidates(name: &str, major: u32) -> Vec<String> {
     names
 }
 
+/// Where FFmpeg's DLLs are on Windows when their folder isn't on the `PATH`
+/// itself: next to an `ffmpeg.exe` that is (winget links only the programs
+/// into its own folder, so the link is followed), and in winget's packages.
+fn windows_ffmpeg_dirs() -> Vec<std::path::PathBuf> {
+    use std::path::PathBuf;
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    if let Some(path) = std::env::var_os("PATH") {
+        for dir in std::env::split_paths(&path) {
+            let exe = dir.join("ffmpeg.exe");
+            if let Ok(real) = std::fs::canonicalize(&exe) {
+                if let Some(parent) = real.parent() {
+                    dirs.push(parent.to_path_buf());
+                }
+            }
+        }
+    }
+    // %LOCALAPPDATA%\Microsoft\WinGet\Packages\Gyan.FFmpeg.Shared_…\ffmpeg-…-shared\bin
+    if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+        let packages = PathBuf::from(local).join("Microsoft\\WinGet\\Packages");
+        for package in std::fs::read_dir(packages).into_iter().flatten().flatten() {
+            if !package
+                .file_name()
+                .to_string_lossy()
+                .to_lowercase()
+                .contains("ffmpeg")
+            {
+                continue;
+            }
+            for build in std::fs::read_dir(package.path())
+                .into_iter()
+                .flatten()
+                .flatten()
+            {
+                dirs.push(build.path().join("bin"));
+            }
+        }
+    }
+    dirs.dedup();
+    dirs
+}
+
+#[cfg(windows)]
+fn load(candidate: &str) -> Option<Library> {
+    use libloading::os::windows::{Library as WinLibrary, LOAD_WITH_ALTERED_SEARCH_PATH};
+    // A full path: its neighbours (avutil, swresample) are found in its own
+    // folder, which Windows doesn't search for a DLL's dependencies otherwise.
+    let flags = if candidate.contains('\\') {
+        LOAD_WITH_ALTERED_SEARCH_PATH
+    } else {
+        0
+    };
+    // SAFETY: loading FFmpeg runs its (trivial) library constructors only.
+    unsafe { WinLibrary::load_with_flags(candidate, flags) }
+        .ok()
+        .map(Into::into)
+}
+
+#[cfg(not(windows))]
+fn load(candidate: &str) -> Option<Library> {
+    // SAFETY: loading FFmpeg runs its (trivial) library constructors only.
+    unsafe { Library::new(candidate) }.ok()
+}
+
 fn open(name: &str, major: u32) -> Option<Library> {
     candidates(name, major).into_iter().find_map(|candidate| {
-        // SAFETY: loading FFmpeg runs its (trivial) library constructors only.
-        unsafe { Library::new(&candidate) }.ok()
+        let library = load(&candidate)?;
+        tracing::debug!(%candidate, "FFmpeg library");
+        Some(library)
     })
 }
 
