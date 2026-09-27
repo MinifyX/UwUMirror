@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "resources": {
+      "resources/scrcpy-server": "scrcpy-server",
+      "macos/de.lproj/InfoPlist.strings": "de.lproj/InfoPlist.strings",
+      "macos/en.lproj/InfoPlist.strings": "en.lproj/InfoPlist.strings"
+    }
+  }
+}

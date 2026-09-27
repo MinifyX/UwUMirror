@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Merged by the Tauri CLI into the app's generated Info.plist.
+
+  Since macOS 15 an app may only talk to the local network after the user
+  allowed it, and the prompt shows NSLocalNetworkUsageDescription; without it
+  the prompt never comes and every packet to the network is dropped. The
+  Bonjour services are the ones UwUMirror announces (AirPlay) and browses for
+  (Android's wireless debugging).
+-->
+<plist version="1.0">
+<dict>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>UwUMirror receives the screen of iPhones, iPads, Macs and Android phones in your local network.</string>
+  <key>NSBonjourServices</key>
+  <array>
+    <string>_airplay._tcp</string>
+    <string>_raop._tcp</string>
+    <string>_adb-tls-pairing._tcp</string>
+    <string>_adb-tls-connect._tcp</string>
+  </array>
+</dict>
+</plist>

@@ -1,0 +1,19 @@
+[package]
+name = "uwumirror-core"
+description = "UwUMirror's shared stream model, sound output and audio decoding"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+# Sound out of the default output device, on every system.
+cpal = "0.15"
+# AirPlay's AAC-ELD, AAC and ALAC go through the system's own FFmpeg, loaded
+# when needed — never linked, never shipped. See `decode.rs`.
+libloading = "0.8"
+parking_lot.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

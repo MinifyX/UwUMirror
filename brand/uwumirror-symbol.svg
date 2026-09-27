@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Nyu, the UwUMirror mirror cat">
+  <title>Nyu</title>
+  <!--
+    Nyu's hull for UwUMirror: a hand mirror. The oval frame with a short
+    handle, the glass is her face (eyes, mouth and blush where they sit in
+    every other app, so every mood fits), a little gem on top where UwURDP's
+    monitor had its power light, and a shine across the glass. The handle
+    hangs inside the die-cut edge like the rest of her. Same geometry as
+    apps/desktop/src/components/nyu/Nyu.tsx.
+  -->
+
+  <!-- die-cut white edge -->
+  <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="20" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M62 96 L80 36 L114 84 Z"/>
+    <path d="M142 84 L176 36 L194 96 Z"/>
+    <rect x="114" y="206" width="28" height="42" rx="12"/>
+    <ellipse cx="128" cy="142" rx="100" ry="86"/>
+  </g>
+
+  <!-- ears -->
+  <g stroke="#4B1D3F" stroke-width="9" stroke-linejoin="round">
+    <path d="M62 96 L80 36 L114 84 Z" fill="#FF6FA6"/>
+    <path d="M142 84 L176 36 L194 96 Z" fill="#FF6FA6"/>
+  </g>
+  <path d="M76 86 L84 54 L100 80 Z" fill="#FFB8D3"/>
+  <path d="M156 80 L172 54 L180 86 Z" fill="#FFB8D3"/>
+
+  <!-- handle, behind the frame -->
+  <rect x="114" y="206" width="28" height="42" rx="12" fill="#FF6FA6" stroke="#4B1D3F" stroke-width="9"/>
+  <path d="M114 234 H142" fill="none" stroke="#4B1D3F" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- frame -->
+  <ellipse cx="128" cy="142" rx="100" ry="86" fill="#FF6FA6" stroke="#4B1D3F" stroke-width="9"/>
+
+  <!-- gem -->
+  <path d="M128 58 L136 66 L128 74 L120 66 Z" fill="#B9F0D0" stroke="#4B1D3F" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- glass = face -->
+  <ellipse cx="128" cy="146" rx="80" ry="64" fill="#FFB8D3" stroke="#4B1D3F" stroke-width="7"/>
+
+  <!-- shine -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" opacity="0.85">
+    <path d="M66 126 Q74 102 100 92"/>
+    <path d="M70 146 Q70 140 72 134"/>
+  </g>
+
+  <ellipse cx="74" cy="168" rx="12" ry="7.5" fill="#FF4D8D" opacity="0.5"/>
+  <ellipse cx="182" cy="168" rx="12" ry="7.5" fill="#FF4D8D" opacity="0.5"/>
+
+  <g fill="none" stroke="#4B1D3F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M88 142 Q102 160 116 142"/>
+    <path d="M140 142 Q154 160 168 142"/>
+    <path d="M112 170 q8 13 16 0 q8 13 16 0"/>
+  </g>
+</svg>

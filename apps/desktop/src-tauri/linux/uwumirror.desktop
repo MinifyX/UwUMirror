@@ -1,0 +1,12 @@
+[Desktop Entry]
+Categories=AudioVideo;Video;Network;
+{{#if comment}}
+Comment={{comment}}
+{{/if}}
+Exec={{exec}}
+Keywords=AirPlay;Mirror;Screen Mirroring;Android;iPhone;iPad;Cast;scrcpy;
+StartupWMClass={{exec}}
+Icon={{icon}}
+Name=UwUMirror
+Terminal=false
+Type=Application

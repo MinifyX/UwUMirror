@@ -1,0 +1,52 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/uwumirror-core",
+  "crates/uwumirror-airplay",
+  "crates/uwumirror-android",
+  "apps/desktop/src-tauri",
+  "apps/setup/src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0-beta.1"
+edition = "2021"
+license = "AGPL-3.0-only"
+repository = "https://github.com/MinifyX/UwUMirror"
+rust-version = "1.89"
+
+[workspace.dependencies]
+uwumirror-core = { path = "crates/uwumirror-core" }
+uwumirror-airplay = { path = "crates/uwumirror-airplay" }
+uwumirror-android = { path = "crates/uwumirror-android" }
+
+anyhow = "1"
+parking_lot = "0.12"
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "macros", "net", "io-util", "process"] }
+tracing = "0.1"
+# Pure-Rust mDNS: AirPlay announces itself with it, and Android's wireless
+# debugging is found with it. No Bonjour service or Avahi needed.
+mdns-sd = "0.13"
+
+[profile.dev]
+opt-level = 1
+# Line tables are enough for backtraces, and keep target/ small and linking
+# fast.
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 3
+debug = false
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+# Unwinding, not abort: a panic in one stream's task must end that stream,
+# not the app with every other stream in it.
+panic = "unwind"
+strip = true

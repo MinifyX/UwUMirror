@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="UwUMirror: a hand mirror with cat ears, and a phone sending its picture to it">
+  <title>UwUMirror</title>
+  <!--
+    Taskbar, window and Linux menus: Nyu alone, upright, no tile. The hand
+    mirror with ears and blush is Nyu; the phone in front of her with its
+    waves running into the glass says mirroring. The white die-cut edge keeps
+    it visible on dark and light taskbars.
+  -->
+  <g transform="translate(12 0)" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Nyu, in the symbol's 256 coordinates -->
+    <g transform="translate(300 232) scale(1.42) translate(-128 -142)">
+      <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="28">
+        <path d="M62 96 L80 36 L114 84 Z"/>
+        <path d="M142 84 L176 36 L194 96 Z"/>
+        <rect x="114" y="206" width="28" height="42" rx="12"/>
+        <ellipse cx="128" cy="142" rx="100" ry="86"/>
+      </g>
+      <g fill="#FF6FA6" stroke="#4B1D3F" stroke-width="12">
+        <path d="M62 96 L80 36 L114 84 Z"/>
+        <path d="M142 84 L176 36 L194 96 Z"/>
+        <rect x="114" y="206" width="28" height="42" rx="12"/>
+      </g>
+      <g fill="#FFB8D3">
+        <path d="M78 84 L85 58 L99 80 Z"/>
+        <path d="M157 80 L171 58 L178 84 Z"/>
+      </g>
+      <ellipse cx="128" cy="142" rx="100" ry="86" fill="#FF6FA6" stroke="#4B1D3F" stroke-width="12"/>
+      <path d="M128 56 L138 66 L128 76 L118 66 Z" fill="#B9F0D0" stroke="#4B1D3F" stroke-width="4"/>
+      <ellipse cx="128" cy="146" rx="80" ry="64" fill="#FFB8D3" stroke="#4B1D3F" stroke-width="9"/>
+      <g fill="none" stroke="#FFFFFF" stroke-width="8" opacity="0.9">
+        <path d="M68 124 Q76 102 100 92"/>
+      </g>
+      <g fill="#FF4D8D" opacity="0.6"><ellipse cx="80" cy="172" rx="12" ry="7.5"/><ellipse cx="176" cy="172" rx="12" ry="7.5"/></g>
+      <g fill="none" stroke="#4B1D3F" stroke-width="10">
+        <path d="M90 142 Q103 160 116 142"/>
+        <path d="M140 142 Q153 160 166 142"/>
+        <path d="M112 172 q8 13 16 0 q8 13 16 0"/>
+      </g>
+    </g>
+
+    <!-- waves from the phone into the glass -->
+    <g transform="translate(160 292) rotate(-24)" fill="none">
+      <g stroke="#FFFFFF" stroke-width="40">
+        <path d="M0 -18 q15 18 0 36"/>
+        <path d="M26 -38 q30 38 0 76"/>
+      </g>
+      <g stroke="#A78BFA" stroke-width="16">
+        <path d="M0 -18 q15 18 0 36"/>
+        <path d="M26 -38 q30 38 0 76"/>
+      </g>
+    </g>
+
+    <!-- the phone -->
+    <g transform="translate(96 330) rotate(-10)">
+      <rect x="-46" y="-78" width="92" height="156" rx="22" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="40"/>
+      <rect x="-46" y="-78" width="92" height="156" rx="22" fill="#C9B6F0" stroke="#4B1D3F" stroke-width="17"/>
+      <rect x="-28" y="-56" width="56" height="104" rx="8" fill="#2B1F4A"/>
+      <path transform="translate(0 -4) scale(1.1)" d="M0 13 C-15 3 -18 -4 -17 -8 C-16 -15 -7 -16 -3 -11 L0 -8 L3 -11 C7 -16 16 -15 17 -8 C18 -4 15 3 0 13Z" fill="#FF6FA6"/>
+    </g>
+  </g>
+</svg>

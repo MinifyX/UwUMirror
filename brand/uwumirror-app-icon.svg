@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="UwUMirror app icon: Nyu as a hand mirror, with cat ears">
+  <title>UwUMirror</title>
+  <!--
+    The website and GitHub icon, built like UwUMail's: Nyu slightly tilted on
+    UwUMail's pastel pink tile (#FFF3F8 to #FFD3E5, the same for every UwU
+    app), with sparkles and a heart arranged differently for each app.
+    The oval frame on its handle, the gem on top and the shine across the
+    glass say mirror. Here: a big star top right, a small one on the left,
+    the heart bottom right. Platform icons: node scripts/icons.mjs
+  -->
+  <defs>
+    <linearGradient id="uwu-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF3F8"/>
+      <stop offset="1" stop-color="#FFD3E5"/>
+    </linearGradient>
+    <filter id="uwu-shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#C2306F" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#uwu-bg)"/>
+  <!-- Nyu in the symbol's own 256 coordinates, 1.5 times as big. -->
+  <g transform="translate(250 266) rotate(-8) scale(1.5) translate(-128 -142)">
+    <g filter="url(#uwu-shadow)"><g stroke-linecap="round" stroke-linejoin="round">
+    <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="28">
+      <path d="M62 96 L80 36 L114 84 Z"/>
+      <path d="M142 84 L176 36 L194 96 Z"/>
+      <rect x="114" y="206" width="28" height="42" rx="12"/>
+      <ellipse cx="128" cy="142" rx="100" ry="86"/>
+    </g>
+    <g fill="#FF6FA6" stroke="#4B1D3F" stroke-width="9">
+      <path d="M62 96 L80 36 L114 84 Z"/>
+      <path d="M142 84 L176 36 L194 96 Z"/>
+      <rect x="114" y="206" width="28" height="42" rx="12"/>
+    </g>
+    <g fill="#FFB8D3">
+      <path d="M76 86 L84 54 L100 80 Z"/>
+      <path d="M156 80 L172 54 L180 86 Z"/>
+    </g>
+    <path d="M114 234 H142" fill="none" stroke="#4B1D3F" stroke-width="6"/>
+    <ellipse cx="128" cy="142" rx="100" ry="86" fill="#FF6FA6" stroke="#4B1D3F" stroke-width="9"/>
+    <path d="M128 58 L136 66 L128 74 L120 66 Z" fill="#B9F0D0" stroke="#4B1D3F" stroke-width="3"/>
+    <ellipse cx="128" cy="146" rx="80" ry="64" fill="#FFB8D3" stroke="#4B1D3F" stroke-width="7"/>
+    <g fill="none" stroke="#FFFFFF" stroke-width="6" opacity="0.85">
+      <path d="M66 126 Q74 102 100 92"/>
+      <path d="M70 146 Q70 140 72 134"/>
+    </g>
+    <g fill="#FF4D8D" opacity="0.5"><ellipse cx="74" cy="168" rx="12" ry="7.5"/><ellipse cx="182" cy="168" rx="12" ry="7.5"/></g>
+    <g fill="none" stroke="#4B1D3F" stroke-width="8">
+      <path d="M88 142 Q102 160 116 142"/>
+      <path d="M140 142 Q154 160 168 142"/>
+      <path d="M112 170 q8 13 16 0 q8 13 16 0"/>
+    </g>
+  </g></g>
+  </g>
+  <g stroke="#4B1D3F" stroke-linejoin="round">
+    <path d="M438 50 Q443 81 474 86 Q443 91 438 122 Q433 91 402 86 Q433 81 438 50Z" fill="#FFD66E" stroke-width="8"/>
+    <path d="M58 226 Q60.8 243.2 78 246 Q60.8 248.8 58 266 Q55.2 248.8 38 246 Q55.2 243.2 58 226Z" fill="#FFD66E" stroke-width="6"/>
+    <path transform="translate(436 430) scale(1) translate(-434 -437)" d="M434 462 C410 446 403 433 406 423 C409 412 423 409 430 418 L434 424 L438 418 C445 409 459 412 462 423 C465 433 458 446 434 462Z" fill="#FF6FA6" stroke-width="8"/>
+  </g>
+</svg>

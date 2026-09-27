@@ -1,0 +1,74 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "UwUMirror",
+  "version": "0.1.0-beta.1",
+  "identifier": "app.uwumirror.desktop",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "UwUMirror",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 640,
+        "minHeight": 440,
+        "center": true,
+        "decorations": false,
+        "shadow": true,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' data:",
+        "media-src": "'self' blob:",
+        "font-src": "'self' data:",
+        "connect-src": "ipc: http://ipc.localhost",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'",
+        "frame-src": "'none'"
+      },
+      "freezePrototype": true
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "publisher": "UwUMirror",
+    "homepage": "https://github.com/MinifyX/UwUMirror",
+    "category": "Utility",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "resources/scrcpy-server": "scrcpy-server"
+    },
+    "copyright": "AGPL-3.0-only",
+    "license": "AGPL-3.0-only",
+    "shortDescription": "AirPlay and Android screen mirroring to your own computer",
+    "longDescription": "Mirror an iPhone, iPad or Mac over AirPlay, or an Android phone over wireless debugging, onto your own computer — in your own network, no cloud, no account.",
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/uwumirror.desktop",
+        "recommends": ["adb", "ffmpeg", "gstreamer1.0-libav", "gstreamer1.0-plugins-good"]
+      },
+      "rpm": {
+        "desktopTemplate": "linux/uwumirror.desktop"
+      }
+    }
+  }
+}
