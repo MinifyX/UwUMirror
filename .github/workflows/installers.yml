@@ -293,7 +293,12 @@ jobs:
             codesign --verify --deep --strict "$app"
             lipo "$app"/Contents/MacOS/* -verify_arch arm64 x86_64
             test -f "$app/Contents/Resources/scrcpy-server"
-            echo "signed, universal, with scrcpy-server: $app"
+            # Without these macOS 15 drops every packet to the local network,
+            # and no phone ever finds the receiver.
+            plutil -extract NSLocalNetworkUsageDescription raw "$app/Contents/Info.plist"
+            plutil -extract NSBonjourServices json -o - "$app/Contents/Info.plist" | grep -q '_airplay._tcp'
+            test -f "$app/Contents/Resources/de.lproj/InfoPlist.strings"
+            echo "signed, universal, with scrcpy-server and the local network keys: $app"
           done
           hdiutil detach "$mount"
 
