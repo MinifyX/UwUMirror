@@ -28,6 +28,17 @@ async fn wait_for(events: &Arc<Mutex<Vec<StreamEvent>>>, count: usize) -> Vec<St
     events.lock().clone()
 }
 
+/// Waits until the pretend adb was called with `needle`, and says whether.
+async fn wait_for_call(log: &std::path::Path, needle: &str) -> bool {
+    for _ in 0..200 {
+        if std::fs::read_to_string(log).is_ok_and(|calls| calls.contains(needle)) {
+            return true;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    false
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn mirrors_a_pretend_phone() {
     let phone = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -142,6 +153,12 @@ async fn mirrors_a_pretend_phone() {
         "SPS in front"
     );
     assert_eq!((frames[1].key, frames[1].pts_us), (false, 2000));
+    // The server is started beside the connecting, not before it: the picture
+    // can be here before the pretend adb wrote its call down.
+    assert!(
+        wait_for_call(&log, " shell ").await,
+        "the server was never started"
+    );
 
     handle.stop();
     let seen = wait_for(&events, 6).await;
@@ -168,17 +185,6 @@ async fn mirrors_a_pretend_phone() {
     ] {
         assert!(shell.contains(part), "{part} missing in {shell}");
     }
-    for _ in 0..100 {
-        if std::fs::read_to_string(&log)
-            .unwrap()
-            .contains(&format!("forward --remove tcp:{port}"))
-        {
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(20)).await;
-    }
-    assert!(std::fs::read_to_string(&log)
-        .unwrap()
-        .contains(&format!("forward --remove tcp:{port}")));
+    assert!(wait_for_call(&log, &format!("forward --remove tcp:{port}")).await);
     std::fs::remove_dir_all(&dir).ok();
 }
