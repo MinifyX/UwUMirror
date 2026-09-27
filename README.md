@@ -101,7 +101,7 @@ Linux (x86_64 and arm64).
    download the file for your system from the newest one:
    `UwUMirror-windows-x64-setup.exe` (`UwUMirror-windows-arm64-setup.exe` on
    ARM), `UwUMirror-macos-universal.dmg`, or on Linux `UwUMirror-linux-x64.deb`
-   / `.rpm` (`…-arm64…` on ARM), `uwumirror-bin` from the AUR, or the
+   / `.rpm` (`…-arm64…` on ARM), the release's `PKGBUILD` on Arch (`makepkg -si`), or the
    `…-portable.tar.gz` to just unpack and run.
 2. Run it. Neither Windows nor macOS knows the setup, because it isn't signed
    with a paid certificate: on Windows **More info → Run anyway**, on macOS

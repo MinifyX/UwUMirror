@@ -26,7 +26,7 @@ always gets the newest finished one.
 | macOS (Intel & Apple chip) | `UwUMirror-macos-universal.dmg`                                        |
 | Ubuntu / Debian            | `UwUMirror-linux-x64.deb` · ARM: `UwUMirror-linux-arm64.deb`           |
 | Fedora / openSUSE          | `UwUMirror-linux-x64.rpm` · ARM: `UwUMirror-linux-arm64.rpm`           |
-| Arch Linux                 | AUR: `uwumirror-bin`                                                   |
+| Arch Linux                 | `PKGBUILD` → `makepkg -si` (the AUR package follows)                   |
 | Linux, portable            | `UwUMirror-linux-x64-portable.tar.gz` · ARM: `…-arm64-portable.tar.gz` |
 
 **Checking the download (optional).** Each release has a `SHA256SUMS.txt`. On
@@ -130,7 +130,9 @@ the full `ffmpeg` and `gstreamer1-plugin-libav` from
 Packman). Uninstall with `sudo dnf remove uwumirror` or
 `sudo zypper remove uwumirror`.
 
-**Arch Linux:** `yay -S uwumirror-bin` (or any AUR helper). pacman lists the
+**Arch Linux:** download the release's `PKGBUILD` into an empty folder and
+run `makepkg -si` there; it repacks the `.deb` and checks it against the
+release's checksums. (`uwumirror-bin` on the AUR follows.) pacman lists the
 optional extras — `android-tools`, `ffmpeg`, `gst-libav`, `gst-plugins-good`
 — with what each is for.
 
@@ -205,7 +207,7 @@ the same network, and see each other.
 
 UwUMirror 0.1 doesn't update itself yet. For a new version, run the new setup
 over the installed UwUMirror, or install the new package over the old one; on
-Arch, pacman updates `uwumirror-bin` with the rest. Settings and the AirPlay
+Arch, build the new release's `PKGBUILD`. Settings and the AirPlay
 key stay. The portable folder is replaced by unpacking the new one.
 
 ## Where your data lives
@@ -252,7 +254,9 @@ receiver.
   `xattr -dr com.apple.quarantine /Applications/UwUMirror.app` clears it.
 - **Windows on ARM** has its own setup (`UwUMirror-windows-arm64-setup.exe`);
   the x64 one runs there too, emulated and slower.
-- Something else? [Open an issue](https://github.com/MinifyX/UwUMirror/issues).
+- Something else? [Open an issue](https://github.com/MinifyX/UwUMirror/issues),
+  best with the log: **Settings → General → Detailed log** on, try again,
+  then **Log → Open folder** and attach `uwumirror.log`.
 
 Building it yourself instead: [Development](../README.md#development).
 
@@ -285,7 +289,7 @@ holt also immer die neueste fertige.
 | macOS (Intel & Apple-Chip) | `UwUMirror-macos-universal.dmg`                                        |
 | Ubuntu / Debian            | `UwUMirror-linux-x64.deb` · ARM: `UwUMirror-linux-arm64.deb`           |
 | Fedora / openSUSE          | `UwUMirror-linux-x64.rpm` · ARM: `UwUMirror-linux-arm64.rpm`           |
-| Arch Linux                 | AUR: `uwumirror-bin`                                                   |
+| Arch Linux                 | `PKGBUILD` → `makepkg -si` (das AUR-Paket folgt)                       |
 | Linux, portabel            | `UwUMirror-linux-x64-portable.tar.gz` · ARM: `…-arm64-portable.tar.gz` |
 
 **Download prüfen (optional).** Jedes Release hat eine `SHA256SUMS.txt`. Unter
@@ -396,7 +400,9 @@ volle `ffmpeg` und `gstreamer1-plugin-libav` aus
 Packman). Deinstallieren mit `sudo dnf remove uwumirror` bzw.
 `sudo zypper remove uwumirror`.
 
-**Arch Linux:** `yay -S uwumirror-bin` (oder ein anderer AUR-Helfer). pacman
+**Arch Linux:** das `PKGBUILD` des Releases in einen leeren Ordner laden und
+dort `makepkg -si` ausführen; es packt die `.deb` um und prüft sie gegen die
+Prüfsummen des Releases. (`uwumirror-bin` im AUR folgt.) pacman
 listet die optionalen Extras — `android-tools`, `ffmpeg`, `gst-libav`,
 `gst-plugins-good` — mit dem, wofür sie jeweils sind.
 
@@ -472,8 +478,8 @@ beide müssen im selben Netz sein und sich sehen können.
 
 UwUMirror 0.1 aktualisiert sich noch nicht selbst. Für eine neue Version das
 neue Setup über das installierte UwUMirror laufen lassen, oder das neue Paket
-über das alte installieren; unter Arch bringt pacman `uwumirror-bin` mit dem
-Rest auf den neuesten Stand. Einstellungen und AirPlay-Schlüssel bleiben. Den
+über das alte installieren; unter Arch das `PKGBUILD` des neuen
+Releases bauen. Einstellungen und AirPlay-Schlüssel bleiben. Den
 portablen Ordner ersetzt du, indem du den neuen entpackst.
 
 ## Wo deine Daten liegen
@@ -524,4 +530,7 @@ deine Geräte sehen einfach einen neuen Empfänger.
 - **Windows auf ARM** hat ein eigenes Setup
   (`UwUMirror-windows-arm64-setup.exe`); das x64-Setup läuft dort auch,
   emuliert und langsamer.
-- Etwas anderes? [Issue aufmachen](https://github.com/MinifyX/UwUMirror/issues).
+- Etwas anderes? [Issue aufmachen](https://github.com/MinifyX/UwUMirror/issues),
+  am besten mit Protokoll: **Einstellungen → Allgemein → Ausführliches
+  Protokoll** an, noch mal versuchen, dann **Protokoll → Ordner öffnen** und
+  `uwumirror.log` anhängen.

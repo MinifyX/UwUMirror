@@ -61,7 +61,8 @@ export function releaseBody(version, notes = readNotes(version)) {
       'Fedora / openSUSE',
       `${code('UwUMirror-linux-x64.rpm')} · ARM: ${code('UwUMirror-linux-arm64.rpm')}`,
     ],
-    ['Arch Linux', 'Arch Linux', `AUR: ${code('uwumirror-bin')}`],
+    // Until uwumirror-bin is on the AUR: its PKGBUILD rides along with the release.
+    ['Arch Linux', 'Arch Linux', `${code('PKGBUILD')} → ${code('makepkg -si')}`],
     [
       'Linux portabel',
       'Linux portable',

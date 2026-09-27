@@ -3,14 +3,14 @@
 > Der Bildschirm vom Handy auf dem Computer. Im eigenen Netzwerk, ohne Cloud,
 > ohne Konto, mit Nyu.
 
-|                 |                                                                      |
-| --------------- | -------------------------------------------------------------------- |
-| **Stand**       | 2026-09-27 · 0.1.0-beta.1                                            |
-| **Basis**       | Tauri 2 + React wie UwUSSH und UwURDP; AirPlay und Android in Rust   |
-| **Bundle-ID**   | `app.uwumirror.desktop`                                              |
-| **Repo**        | [MinifyX/UwUMirror](https://github.com/MinifyX/UwUMirror) · AGPL-3.0 |
-| **Maskottchen** | Nyu, diesmal als Handspiegel                                         |
-| **Plattformen** | Windows (x64, ARM), macOS (Apple-Chip, Intel), Linux (x64, ARM), AUR |
+|                 |                                                                       |
+| --------------- | --------------------------------------------------------------------- |
+| **Stand**       | 2026-09-27 · 0.1.0-beta.1                                             |
+| **Basis**       | Tauri 2 + React wie UwUSSH und UwURDP; AirPlay und Android in Rust    |
+| **Bundle-ID**   | `app.uwumirror.desktop`                                               |
+| **Repo**        | [MinifyX/UwUMirror](https://github.com/MinifyX/UwUMirror) · AGPL-3.0  |
+| **Maskottchen** | Nyu, diesmal als Handspiegel                                          |
+| **Plattformen** | Windows (x64, ARM), macOS (Apple-Chip, Intel), Linux (x64, ARM), Arch |
 
 ---
 
