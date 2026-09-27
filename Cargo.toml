@@ -34,9 +34,13 @@ mdns-sd = "0.13"
 
 [profile.dev]
 opt-level = 1
+# Line tables are enough for backtraces, and keep target/ small and linking
+# fast.
+debug = "line-tables-only"
 
 [profile.dev.package."*"]
 opt-level = 3
+debug = false
 
 [profile.release]
 codegen-units = 1
