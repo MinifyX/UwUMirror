@@ -269,6 +269,8 @@ async fn miracast_apply(
         }
         // Hanging up and closing the session waits for Windows a moment.
         let old = miracast.receiver.take();
+        // Dropping hangs up on Windows; elsewhere the receiver is a stub.
+        #[cfg_attr(not(windows), allow(clippy::drop_non_drop))]
         let _ = tokio::task::spawn_blocking(move || drop(old)).await;
     }
     if !settings.enabled {
@@ -548,6 +550,8 @@ pub fn run() {
             // Hang up on a Miracast sender and give Windows its receiver back.
             let miracast =
                 std::mem::take(&mut *tauri::async_runtime::block_on(state.miracast.lock()));
+            // (Only Windows' receiver does anything when dropped.)
+            #[cfg_attr(not(windows), allow(clippy::drop_non_drop))]
             drop(miracast);
             state.cast.shut_down();
         }

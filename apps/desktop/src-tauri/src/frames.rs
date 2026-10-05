@@ -30,6 +30,22 @@ use uwumirror_core::RawFrame;
 /// Pictures sent through the channel that the page hasn't drawn yet, at most.
 const MAX_IN_FLIGHT: u32 = 2;
 
+/// `counter` changed by `change`, unless it says no (`None`): whether it did.
+/// (Spelled out because `fetch_update` is deprecated in newer Rust and its
+/// successor `try_update` isn't in older.)
+fn update(counter: &AtomicU32, change: impl Fn(u32) -> Option<u32>) -> bool {
+    let mut current = counter.load(Ordering::Relaxed);
+    loop {
+        let Some(next) = change(current) else {
+            return false;
+        };
+        match counter.compare_exchange_weak(current, next, Ordering::Relaxed, Ordering::Relaxed) {
+            Ok(_) => return true,
+            Err(actual) => current = actual,
+        }
+    }
+}
+
 /// Bytes in front of a picture in a shared slot; byte 0 is the owner flag.
 /// Keep in step with `FRAME_HEADER` in `lib/api.ts`.
 #[cfg_attr(not(windows), allow(dead_code))]
@@ -81,9 +97,7 @@ impl FrameOut {
 
     /// The page drew a picture that came through the channel.
     pub fn done(&self) {
-        let _ = self
-            .in_flight
-            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_sub(1));
+        update(&self.in_flight, |n| n.checked_sub(1));
     }
 
     /// Hands `frame` to the page, or drops it when the page is busy.
@@ -99,13 +113,7 @@ impl FrameOut {
             shared::Sent::NoSharedBuffers => {}
         }
         let Some(channel) = channel else { return };
-        if self
-            .in_flight
-            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| {
-                (n < MAX_IN_FLIGHT).then_some(n + 1)
-            })
-            .is_err()
-        {
+        if !update(&self.in_flight, |n| (n < MAX_IN_FLIGHT).then_some(n + 1)) {
             return;
         }
         if channel
