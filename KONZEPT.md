@@ -68,7 +68,19 @@ Android-Handys. Also: ich.
   wie ein Apple TV auf „Alle im selben Netzwerk“. Ein Schalter auf der
   Startseite macht ihn aus.
 
-**Android**
+**Miracast (Android-Handys, Windows-PCs; nur unter Windows)**
+
+- Der Hauptweg für Android: Am Handy „Smart View“, „Bildschirm spiegeln“ oder
+  „Cast“ öffnen und den Computer wählen; Windows-PCs mit Win+K. Kein
+  Koppeln, keine Entwickleroptionen. Pixel-Handys können kein Miracast.
+- UwUMirror leiht sich den Miracast-Empfänger von Windows
+  (`Windows.Media.Miracast`), solange es läuft (Schalter „Miracast
+  empfangen“). Der Name ist der von Windows (der Computername).
+- Das Bild kommt hier ausnahmsweise dekodiert an (Media Foundation auf der
+  Grafikkarte), als NV12 über WebView2s Shared Buffers in die Seite; der Ton
+  spielt Windows selbst.
+
+**Android (kabelloses Debugging, überall; unter Windows „Erweitert“)**
 
 - Koppeln über kabelloses Debugging (ab Android 11): QR-Code wie in Android
   Studio (`WIFI:T:ADB;S:…;P:…;;`, gefunden per mDNS), Kopplungscode, oder
@@ -119,6 +131,9 @@ Hardware, ohne Lizenzfragen für uns. Rust entschlüsselt, setzt Startcodes
 pro Stream alles seit dem letzten Keyframe vor, damit eine neu geladene Seite
 sofort ein Bild hat — iPhones schicken bei stillem Bildschirm minutenlang
 keinen neuen Keyframe.
+
+Ausnahme Miracast (Windows): Windows liefert nur fertige Bilder; die gehen als
+NV12 über WebView2s Shared Buffers direkt in einen `VideoFrame` der Seite.
 
 **Ton wird in Rust dekodiert und abgespielt** (cpal), mit kurzem Puffer, der
 bei Überlänge gekürzt wird: Live geht vor Vollständigkeit.

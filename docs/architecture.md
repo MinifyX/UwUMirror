@@ -5,18 +5,20 @@ picture gets from a phone onto the screen, and how all of it is tested.
 
 ## The pieces
 
-| Crate / app                | Job                                                                                                                       |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `crates/uwumirror-core`    | `StreamEvent` (the model every source speaks), sound output with cpal, AirPlay audio decoding through the system's FFmpeg |
-| `crates/uwumirror-airplay` | The AirPlay receiver: Bonjour, RTSP, pairing, FairPlay, the mirroring stream, RTP audio, NTP                              |
-| `crates/uwumirror-android` | Finding and running `adb`, pairing over wireless debugging, scrcpy's server and protocol                                  |
-| `apps/desktop/src-tauri`   | The shell: starts the receiver and the Android side, the hub, commands for the page                                       |
-| `apps/desktop/src`         | The page: React, the players, the start page, settings                                                                    |
-| `apps/setup`               | The installer and uninstaller                                                                                             |
+| Crate / app                 | Job                                                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `crates/uwumirror-core`     | `StreamEvent` (the model every source speaks), sound output with cpal, AirPlay audio decoding through the system's FFmpeg |
+| `crates/uwumirror-airplay`  | The AirPlay receiver: Bonjour, RTSP, pairing, FairPlay, the mirroring stream, RTP audio, NTP                              |
+| `crates/uwumirror-android`  | Finding and running `adb`, pairing over wireless debugging, scrcpy's server and protocol                                  |
+| `crates/uwumirror-miracast` | Miracast through Windows' own receiver: the session, `MediaPlayer`'s frame server, NV12 read back (Windows only)          |
+| `apps/desktop/src-tauri`    | The shell: starts the receiver and the Android side, the hub, commands for the page                                       |
+| `apps/desktop/src`          | The page: React, the players, the start page, settings                                                                    |
+| `apps/setup`                | The installer and uninstaller                                                                                             |
 
 A source never knows the page. It produces `StreamEvent`s — `Started`,
 `VideoSize`, `Video` (one H.264 access unit, Annex B), `VideoPaused`, `Audio`
-(a status), `Ended` — into an `EventSink`. The desktop shell's hub
+(a status), `Ended`, and `Frame` (a decoded NV12 picture, Miracast's) — into
+an `EventSink`. The desktop shell's hub
 (`src-tauri/src/hub.rs`) turns them into JSON events for the interface and
 binary messages on a Tauri channel for the video.
 
@@ -119,6 +121,61 @@ packets with key-frame flag and PTS). Sound is requested as raw PCM, 48 kHz
 stereo. When the video socket ends — or the user stops — the server is killed
 and the forward removed.
 
+## Miracast (Windows)
+
+Most Android phones cast over Miracast ("Smart View", "Screen mirroring",
+"Cast"), and so do Windows PCs (Win+K). Miracast rides Wi-Fi Direct, which no
+app can drive itself — but Windows lends its own receiver, the one behind
+"Projecting to this PC", as `Windows.Media.Miracast.MiracastReceiver`. That
+works from UwUMirror as it is: unpackaged, unsigned, no capability, no
+administrator, not even the optional "Wireless Display" feature (checked on
+Windows 11 with a real phone). macOS and Linux have no such receiver; there
+the crate only reports `unsupported`, and Android stays with wireless
+debugging.
+
+`miracast/src/receiver/` keeps one thread in the multithreaded apartment that
+owns everything: `MiracastReceiver`, one session (`AllowConnectionTakeover`,
+one connection at a time), its connection and the player. Windows' events
+(`ConnectionCreated`, `MediaSourceCreated`, `Disconnected`, `StatusChanged`)
+arrive on its worker threads and are only passed on to that thread. A
+connection becomes a stream of kind `Miracast` (the sender's name, its MAC as
+the address); stopping it, or a newer stream from any source, hangs up with
+`Disconnect`. The receiver's state (listening, no Wi-Fi Direct, Wi-Fi off,
+disabled by policy, busy while this PC projects itself) and a PIN a sender
+may ask for go to the page as `miracast` events. The name senders list is
+Windows' own (the computer's): changing it (`DisconnectAllAndApplySettings`)
+would change Windows' receiver for everything else too, and outlive
+UwUMirror, so the page shows that name instead.
+
+**The picture arrives decoded.** The receiver hands over a `MediaSource`, not
+the phone's H.264. `MediaPlayer` plays it with `RealTimePlayback` (without it
+the picture stalls) and the frame server on: on every `VideoFrameAvailable`,
+`CopyFrameToVideoSurface` draws the picture — decoded, converted, and scaled
+down to fit 1920 × 1080 by the graphics card — into an NV12 texture; a
+staging copy is mapped, packed without row padding, and becomes a
+`StreamEvent::Frame`. The sound plays through the same `MediaPlayer` on the
+default output device; "sound off" mutes it.
+
+**Into the page through shared buffers** (`src-tauri/src/frames.rs`). A 1080p
+picture is 3 MB in NV12. Measured on the development PC (1080p60 through the
+whole path, release build, Windows 11, WebView2):
+
+| Way                     | Pictures drawn | CPU (app + WebView2) | Rust → page   |
+| ----------------------- | -------------- | -------------------- | ------------- |
+| Tauri channel (binary)  | 34 / s of 60   | 156 % of one core    | –             |
+| WebView2 shared buffers | 60 / s of 60   | 45 % of one core     | 2.3 ms median |
+
+So the pictures go through three shared buffers
+(`ICoreWebView2Environment12::CreateSharedBuffer`, posted with
+`ICoreWebView2_17::PostSharedBufferToScript` from the main thread through
+Tauri's `with_webview`). The first byte of each says whether the page holds
+it; the page makes a `VideoFrame` (`format: 'NV12'`) straight from the
+mapping, gives the buffer back, and draws onto the same canvas the H.264
+player uses (about 1 ms). A picture that finds no buffer free is dropped —
+never queued. Without shared buffers (an old WebView2) pictures take the
+channel, at most two unacknowledged at a time. Re-encoding to H.264 for the
+existing path was the alternative, and wasn't needed.
+
 ## Tests
 
 Everything that can be tested without a phone is:
@@ -135,11 +192,21 @@ Everything that can be tested without a phone is:
 - **A whole Android mirror** (`android/tests/fake_phone.rs`): a shell script
   plays `adb` (logging every call), the test plays scrcpy's server on the
   forwarded port.
+- **Miracast's picture path** (Windows): `cargo run -p uwumirror-miracast
+--example play_file -- <file.mp4>` plays a video through the same player,
+  frame server and read-back and counts the pictures (60 a second at 1080p,
+  about 4 ms each to copy out; a 4K file comes out as 1080p). With
+  `UWUMIRROR_PRETEND_MIRACAST=<file.mp4>` the app itself plays the file as a
+  Miracast sender, through the shared buffers into the page;
+  `UWUMIRROR_FRAMES_VIA_CHANNEL=1` forces the channel, to compare. The
+  `listen` example starts the real receiver and prints its state and what
+  senders do.
 - **Real decoding**: AAC made by the `ffmpeg` command, decoded through the
   runtime-loaded libavcodec (`core/tests/decode.rs`).
 - Units for RTSP parsing and limits, FairPlay rounds and mode checks, pairing,
   mirroring decryption across packets, AVCC to Annex B, audio decryption,
-  resampling, the hub's cache, the platform-tools unpacking.
+  resampling, the hub's cache, the platform-tools unpacking, Miracast's
+  states, picture sizes and NV12 packing, the frame message.
 
 The checks CI runs (`.github/workflows/ci.yml`), and what to run before a push:
 

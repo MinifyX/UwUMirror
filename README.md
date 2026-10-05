@@ -50,7 +50,12 @@ simple on purpose: open it, and it is ready.
   Mirroring** in the Control Center, like an Apple TV. Pick it, and your
   screen is here — with sound. AirPlay audio from Music and Podcasts works
   too.
-- **Android over wireless debugging.** Pair a phone once by scanning a QR code
+- **Android phones and Windows PCs over Miracast** (UwUMirror on Windows).
+  Open "Smart View", "Screen mirroring" or "Cast" on the phone (Win+K on a
+  PC) and pick this computer — no pairing, no developer options. UwUMirror
+  borrows Windows' own Miracast receiver while it runs.
+- **Android over wireless debugging**, everywhere, and for phones without
+  Miracast like Pixels. Pair a phone once by scanning a QR code
   (or with the six-digit code, or over USB), and from then on it shows up in
   UwUMirror by itself; one click mirrors it, with sound on Android 11 and
   newer. It uses the server of [scrcpy](https://github.com/Genymobile/scrcpy),
