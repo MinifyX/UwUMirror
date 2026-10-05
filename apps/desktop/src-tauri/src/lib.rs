@@ -19,7 +19,7 @@ use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::{Emitter, Manager, RunEvent, State};
 use tauri_plugin_opener::OpenerExt;
 use tokio::task::AbortHandle;
-use uwumirror_airplay::{Receiver, ReceiverConfig};
+use uwumirror_airplay::{PairingSink, Receiver, ReceiverConfig};
 use uwumirror_android::{AdbStatus, Android, Device, MirrorOptions, QrPairing};
 use uwumirror_core::{decode, EventSink};
 use uwumirror_miracast::{MiracastState, MiracastStatus};
@@ -71,6 +71,8 @@ struct AppState {
     hub: Arc<Hub>,
     sink: EventSink,
     identity_path: PathBuf,
+    /// The devices that paired with a PIN, next to the identity.
+    trusted_path: PathBuf,
     airplay: tokio::sync::Mutex<AirplayState>,
     android: Arc<Android>,
     pairing: Mutex<Option<AbortHandle>>,
@@ -157,9 +159,11 @@ fn airplay_status(state: &AirplayState) -> AirplayStatus {
     }
 }
 
-/// Starts, restarts or stops the receiver to match `settings`.
+/// Starts, restarts or stops the receiver to match `settings`. A device that
+/// asks for a PIN is told to the page as an `airplay-pairing` event.
 #[tauri::command]
 async fn airplay_apply(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     settings: AirplaySettings,
 ) -> Result<AirplayStatus> {
@@ -200,8 +204,14 @@ async fn airplay_apply(
             fps: settings.fps.clamp(15, 60),
             audio: settings.audio,
             identity_path: state.identity_path.clone(),
+            trusted_path: state.trusted_path.clone(),
         };
-        match Receiver::start(config, state.sink.clone()).await {
+        let on_pairing: PairingSink = Arc::new(move |event| {
+            if let Err(error) = app.emit("airplay-pairing", event) {
+                tracing::warn!(%error, "AirPlay pairing to the page");
+            }
+        });
+        match Receiver::start(config, state.sink.clone(), on_pairing).await {
             Ok(receiver) => airplay.receiver = Some(receiver),
             Err(error) => {
                 tracing::warn!(%error, "AirPlay receiver");
@@ -211,6 +221,27 @@ async fn airplay_apply(
     }
     airplay.settings = Some(settings);
     Ok(airplay_status(&airplay))
+}
+
+/// How many devices paired with a PIN (Settings → AirPlay).
+#[tauri::command]
+async fn airplay_trusted_devices(state: State<'_, AppState>) -> Result<usize> {
+    let airplay = state.airplay.lock().await;
+    Ok(match &airplay.receiver {
+        Some(receiver) => receiver.trusted_devices(),
+        None => uwumirror_airplay::trusted_devices(&state.trusted_path),
+    })
+}
+
+/// Forgets the devices that paired with a PIN: each asks for one again.
+#[tauri::command]
+async fn airplay_forget_devices(state: State<'_, AppState>) -> Result<()> {
+    let airplay = state.airplay.lock().await;
+    match &airplay.receiver {
+        Some(receiver) => receiver.forget_trusted_devices(),
+        None => uwumirror_airplay::forget_trusted_devices(&state.trusted_path),
+    }
+    .map_err(text)
 }
 
 #[tauri::command]
@@ -475,6 +506,7 @@ pub fn run() {
                 hub,
                 sink,
                 identity_path: data.join("airplay-identity"),
+                trusted_path: data.join("airplay-trusted"),
                 airplay: tokio::sync::Mutex::new(AirplayState {
                     receiver: None,
                     settings: None,
@@ -510,6 +542,8 @@ pub fn run() {
             app_info,
             ffmpeg_recheck,
             airplay_apply,
+            airplay_trusted_devices,
+            airplay_forget_devices,
             streams,
             subscribe_video,
             stream_stop,

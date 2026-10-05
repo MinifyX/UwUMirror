@@ -9,7 +9,9 @@
 //!
 //! We don't ask for a PIN: anyone on the network may mirror to the receiver
 //! while it is switched on, exactly like an Apple TV set to "everyone on the
-//! same network". The app shows who is connecting and can end it.
+//! same network". The app shows who is connecting and can end it. Only a
+//! sender that asks for a PIN itself gets one (see `pin.rs`); it pairs with
+//! SRP in place of `/pair-setup`, and runs the same pair-verify afterwards.
 
 use std::path::Path;
 

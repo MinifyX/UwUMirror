@@ -4,9 +4,11 @@
 //! senders and turns each one into a stream of [`StreamEvent`]s. It speaks
 //! the AirPlay dialect the open-source receivers before it worked out (UxPlay,
 //! RPiPlay, shairplay): legacy pairing, FairPlay (see `playfair/`), H.264
-//! mirroring and RAOP audio. There is no PIN: while the receiver is switched
-//! on, anyone on the local network can mirror to it — the app shows who is
-//! connected and can end a stream with one click.
+//! mirroring and RAOP audio. iPhones need no PIN: while the receiver is
+//! switched on, anyone on the local network can mirror to it — the app shows
+//! who is connected and can end a stream with one click. A sender that asks
+//! for a PIN (Macs on recent macOS) gets one, shown by the app through
+//! [`PairingEvent`]s, and is remembered once it has paired (see `pin.rs`).
 //!
 //! [`StreamEvent`]: uwumirror_core::StreamEvent
 
@@ -14,14 +16,16 @@ mod advertise;
 mod fairplay;
 mod mirror;
 mod pairing;
+mod pin;
 mod rtsp;
 mod session;
 mod sound;
+mod srp;
 mod timing;
 
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -32,6 +36,9 @@ use uwumirror_core::{EventSink, StreamInfo};
 
 pub use advertise::Offer;
 pub use pairing::Identity;
+pub use pin::{PairingEvent, PairingFailure, PairingSink, PIN_LIFETIME};
+
+use pin::{PinGate, TrustedDevices};
 
 /// The port Apple TVs use. Taken (by macOS's own AirPlay receiver, say),
 /// UwUMirror moves on: Bonjour tells senders the port anyway.
@@ -49,6 +56,8 @@ pub struct ReceiverConfig {
     pub audio: bool,
     /// Where the receiver's lasting key lives.
     pub identity_path: PathBuf,
+    /// Where the devices that paired with a PIN are remembered.
+    pub trusted_path: PathBuf,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -71,6 +80,11 @@ pub(crate) struct Shared {
     streams: Mutex<HashMap<u64, StreamInfo>>,
     /// Open connections, by connection number.
     connections: Mutex<HashMap<u64, (AbortHandle, Arc<AtomicU64>)>>,
+    /// The PIN showing, if a device asked for one.
+    pin: Mutex<PinGate>,
+    /// Devices that paired with a PIN.
+    trusted: Mutex<TrustedDevices>,
+    on_pairing: PairingSink,
 }
 
 impl Shared {
@@ -98,7 +112,13 @@ async fn listen() -> Result<TcpListener, std::io::Error> {
 }
 
 impl Receiver {
-    pub async fn start(config: ReceiverConfig, sink: EventSink) -> Result<Self, ReceiverError> {
+    /// Starts the receiver. Streams are told to `sink`, PIN pairing to
+    /// `on_pairing`.
+    pub async fn start(
+        config: ReceiverConfig,
+        sink: EventSink,
+        on_pairing: PairingSink,
+    ) -> Result<Self, ReceiverError> {
         let identity =
             Identity::load_or_create(&config.identity_path).map_err(ReceiverError::Identity)?;
         let listener = listen().await.map_err(ReceiverError::Listen)?;
@@ -116,6 +136,9 @@ impl Receiver {
             audio: AtomicBool::new(config.audio),
             streams: Mutex::new(HashMap::new()),
             connections: Mutex::new(HashMap::new()),
+            pin: Mutex::new(PinGate::default()),
+            trusted: Mutex::new(TrustedDevices::load(&config.trusted_path)),
+            on_pairing,
         });
         let accept = tokio::spawn(accept_loop(listener, shared.clone()));
         tracing::info!(port, name = %config.name, "AirPlay receiver on");
@@ -153,6 +176,26 @@ impl Receiver {
     pub fn set_audio(&self, on: bool) {
         self.shared.audio.store(on, Ordering::Relaxed);
     }
+
+    /// How many devices paired with a PIN.
+    pub fn trusted_devices(&self) -> usize {
+        self.shared.trusted.lock().len()
+    }
+
+    /// Forgets every device that paired with a PIN: each asks for one again.
+    pub fn forget_trusted_devices(&self) -> std::io::Result<()> {
+        self.shared.trusted.lock().forget()
+    }
+}
+
+/// How many devices paired with a PIN, from the file, while no receiver runs.
+pub fn trusted_devices(path: &Path) -> usize {
+    TrustedDevices::load(path).len()
+}
+
+/// Forgets every device that paired with a PIN, while no receiver runs.
+pub fn forget_trusted_devices(path: &Path) -> std::io::Result<()> {
+    TrustedDevices::load(path).forget()
 }
 
 impl Drop for Receiver {

@@ -17,7 +17,8 @@ use x25519_dalek::{PublicKey, StaticSecret};
 
 use crate::fairplay::FairPlay;
 use crate::mirror::stream_cipher;
-use crate::{Receiver, ReceiverConfig};
+use crate::pin::tests::Mac;
+use crate::{PairingEvent, PairingFailure, PairingSink, Receiver, ReceiverConfig};
 
 struct Sender {
     stream: BufReader<TcpStream>,
@@ -119,8 +120,9 @@ async fn an_iphone_mirrors_a_frame() {
         fps: 30,
         audio: false,
         identity_path: dir.join("airplay-identity"),
+        trusted_path: dir.join("airplay-trusted"),
     };
-    let receiver = match Receiver::start(config, sink).await {
+    let receiver = match Receiver::start(config, sink, Arc::new(|_| {})).await {
         Ok(receiver) => receiver,
         Err(crate::ReceiverError::Announce(error)) => {
             eprintln!("no multicast here ({error}), skipping");
@@ -394,6 +396,275 @@ async fn an_iphone_mirrors_a_frame() {
     assert!(receiver.streams().is_empty());
     drop(receiver);
     std::fs::remove_dir_all(dir).ok();
+}
+
+/// A receiver of its own for one test, with what it tells the app.
+struct TestReceiver {
+    receiver: Receiver,
+    pairing: Arc<Mutex<Vec<PairingEvent>>>,
+    dir: std::path::PathBuf,
+}
+
+impl TestReceiver {
+    /// `None` where multicast is missing (some CI machines).
+    async fn start(tag: &str) -> Option<Self> {
+        let dir = std::env::temp_dir().join(format!("uwumirror-{tag}-{}", std::process::id()));
+        let pairing = Arc::new(Mutex::new(Vec::new()));
+        let on_pairing: PairingSink = {
+            let pairing = pairing.clone();
+            Arc::new(move |event| pairing.lock().push(event))
+        };
+        let config = ReceiverConfig {
+            name: format!("UwUMirror {tag}"),
+            width: 1280,
+            height: 720,
+            fps: 30,
+            audio: false,
+            identity_path: dir.join("airplay-identity"),
+            trusted_path: dir.join("airplay-trusted"),
+        };
+        match Receiver::start(config, Arc::new(|_| {}), on_pairing).await {
+            Ok(receiver) => Some(Self {
+                receiver,
+                pairing,
+                dir,
+            }),
+            Err(crate::ReceiverError::Announce(error)) => {
+                eprintln!("no multicast here ({error}), skipping");
+                None
+            }
+            Err(error) => panic!("{error}"),
+        }
+    }
+
+    async fn connect(&self) -> Sender {
+        let socket = TcpStream::connect(("127.0.0.1", self.receiver.port()))
+            .await
+            .unwrap();
+        Sender {
+            stream: BufReader::new(socket),
+            cseq: 0,
+        }
+    }
+
+    fn pairing_events(&self) -> Vec<PairingEvent> {
+        self.pairing.lock().clone()
+    }
+}
+
+impl Drop for TestReceiver {
+    fn drop(&mut self) {
+        std::fs::remove_dir_all(&self.dir).ok();
+    }
+}
+
+impl Sender {
+    /// A `pair-setup-pin` step: the status, and the reply's plist on success.
+    async fn pin_step(&mut self, body: Dictionary) -> (u16, Option<Dictionary>) {
+        let mut bytes = Vec::new();
+        plist::to_writer_binary(&mut bytes, &Value::Dictionary(body)).unwrap();
+        let (code, reply) = self
+            .request(
+                "POST",
+                "/pair-setup-pin",
+                Some("application/x-apple-binary-plist"),
+                &bytes,
+            )
+            .await;
+        let reply = (code == 200).then(|| {
+            Value::from_reader(std::io::Cursor::new(reply))
+                .unwrap()
+                .into_dictionary()
+                .unwrap()
+        });
+        (code, reply)
+    }
+
+    /// Both pair-verify steps with `signing` as the lasting key. Returns the
+    /// first step's status (the second only runs after a 200), and the
+    /// shared secret.
+    async fn pair_verify(&mut self, signing: &SigningKey, seed: u8) -> (u16, Option<[u8; 32]>) {
+        let secret = StaticSecret::from([seed; 32]);
+        let public = PublicKey::from(&secret);
+        let mut first = vec![1, 0, 0, 0];
+        first.extend_from_slice(public.as_bytes());
+        first.extend_from_slice(&signing.verifying_key().to_bytes());
+        let (code, reply) = self.request("POST", "/pair-verify", None, &first).await;
+        if code != 200 {
+            return (code, None);
+        }
+        let theirs: [u8; 32] = reply[..32].try_into().unwrap();
+        let shared = *secret.diffie_hellman(&PublicKey::from(theirs)).as_bytes();
+        let derive = |salt: &[u8]| -> [u8; 16] {
+            Sha512::new()
+                .chain_update(salt)
+                .chain_update(shared)
+                .finalize()[..16]
+                .try_into()
+                .unwrap()
+        };
+        use aes::cipher::KeyIvInit;
+        let mut ctr = ctr::Ctr128BE::<aes::Aes128>::new(
+            &derive(b"Pair-Verify-AES-Key").into(),
+            &derive(b"Pair-Verify-AES-IV").into(),
+        );
+        let mut skip = [0u8; 64];
+        ctr.apply_keystream(&mut skip);
+        let mut message = public.as_bytes().to_vec();
+        message.extend_from_slice(&theirs);
+        let mut signature = signing.sign(&message).to_bytes();
+        ctr.apply_keystream(&mut signature);
+        let mut second = vec![0, 0, 0, 0];
+        second.extend_from_slice(&signature);
+        let (code, _) = self.request("POST", "/pair-verify", None, &second).await;
+        assert_eq!(code, 200, "the second pair-verify step");
+        (200, Some(shared))
+    }
+}
+
+/// The PIN the receiver last showed.
+fn shown_pin(events: &[PairingEvent]) -> String {
+    events
+        .iter()
+        .rev()
+        .find_map(|event| match event {
+            PairingEvent::PinRequested { pin, .. } => Some(pin.clone()),
+            _ => None,
+        })
+        .expect("a PIN on screen")
+}
+
+/// A Mac on macOS Sequoia: asks for a PIN, pairs with SRP, then pair-verify,
+/// FairPlay and SETUP as usual. Next time it skips straight to pair-verify,
+/// and is let in — until the app forgets it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_mac_pairs_with_a_pin() {
+    let Some(test) = TestReceiver::start("pin-e2e").await else {
+        return;
+    };
+    let mut sender = test.connect().await;
+    let (code, info) = sender.request("GET", "/info", None, &[]).await;
+    assert_eq!(code, 200);
+    let info = Value::from_reader(std::io::Cursor::new(info)).unwrap();
+    let receiver_pk = info
+        .as_dictionary()
+        .unwrap()
+        .get("pk")
+        .unwrap()
+        .as_data()
+        .unwrap()
+        .to_vec();
+
+    let (code, _) = sender.request("POST", "/pair-pin-start", None, &[]).await;
+    assert_eq!(code, 200);
+    let pin = shown_pin(&test.pairing_events());
+    assert!(pin.len() == 4 && pin.chars().all(|c| c.is_ascii_digit()));
+
+    let signing = SigningKey::from_bytes(&[31u8; 32]);
+    let mut mac = Mac::new("4C:32:75:9B:2E:F1", signing.verifying_key().to_bytes());
+    let (code, first) = sender.pin_step(mac.first()).await;
+    assert_eq!(code, 200);
+    let first = first.unwrap();
+    assert_eq!(first.get("salt").unwrap().as_data().unwrap().len(), 16);
+    assert_eq!(first.get("pk").unwrap().as_data().unwrap().len(), 256);
+    let (code, second) = sender.pin_step(mac.second(&first, &pin)).await;
+    assert_eq!(code, 200);
+    let (code, third) = sender.pin_step(mac.third(&second.unwrap())).await;
+    assert_eq!(code, 200);
+    assert_eq!(mac.receiver_key(&third.unwrap()).to_vec(), receiver_pk);
+    assert!(test.pairing_events().contains(&PairingEvent::Paired {
+        address: "127.0.0.1".into(),
+        device: "4C:32:75:9B:2E:F1".into(),
+    }));
+    assert_eq!(test.receiver.trusted_devices(), 1);
+
+    // Pair-verify, FairPlay and the first SETUP, as after `/pair-setup`.
+    let (code, shared) = sender.pair_verify(&signing, 32).await;
+    assert_eq!(code, 200);
+    assert!(shared.is_some());
+    let mut fp_first = [0u8; 16];
+    fp_first[4] = 3;
+    fp_first[14] = 1;
+    let (code, reply) = sender.request("POST", "/fp-setup", None, &fp_first).await;
+    assert_eq!((code, reply.len()), (200, 142));
+    let mut fp_second = [5u8; 164];
+    fp_second[4] = 3;
+    fp_second[12] = 1;
+    let (code, reply) = sender.request("POST", "/fp-setup", None, &fp_second).await;
+    assert_eq!((code, reply.len()), (200, 32));
+    sender
+        .plist(
+            "SETUP",
+            "rtsp://127.0.0.1/1",
+            dict(vec![
+                ("ekey", Value::Data(vec![9u8; 72])),
+                ("eiv", Value::Data(vec![3; 16])),
+                ("name", "Test Mac".into()),
+                ("model", "MacBookPro16,1".into()),
+            ]),
+        )
+        .await;
+    drop(sender);
+
+    // Next time: straight to pair-verify, no PIN.
+    let mut again = test.connect().await;
+    assert_eq!(again.pair_verify(&signing, 33).await.0, 200);
+    // A stranger can't skip pairing.
+    let mut stranger = test.connect().await;
+    let other = SigningKey::from_bytes(&[34u8; 32]);
+    assert_eq!(stranger.pair_verify(&other, 35).await.0, 470);
+    // An iPhone, doing pair-setup first, needs no PIN.
+    let (code, _) = stranger
+        .request(
+            "POST",
+            "/pair-setup",
+            None,
+            &other.verifying_key().to_bytes(),
+        )
+        .await;
+    assert_eq!(code, 200);
+    assert_eq!(stranger.pair_verify(&other, 36).await.0, 200);
+
+    // Forgotten, the Mac must pair again.
+    test.receiver.forget_trusted_devices().unwrap();
+    assert_eq!(test.receiver.trusted_devices(), 0);
+    let mut forgotten = test.connect().await;
+    assert_eq!(forgotten.pair_verify(&signing, 37).await.0, 470);
+}
+
+/// A wrong PIN: refused, the PIN used up, and no way around it.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_mac_with_the_wrong_pin_is_refused() {
+    let Some(test) = TestReceiver::start("pin-wrong").await else {
+        return;
+    };
+    let mut sender = test.connect().await;
+    let (code, _) = sender.request("POST", "/pair-pin-start", None, &[]).await;
+    assert_eq!(code, 200);
+    let pin = shown_pin(&test.pairing_events());
+    let wrong = format!("{:04}", (pin.parse::<u32>().unwrap() + 5000) % 10_000);
+
+    let signing = SigningKey::from_bytes(&[41u8; 32]);
+    let mut mac = Mac::new("4C:32:75:9B:2E:F2", signing.verifying_key().to_bytes());
+    let (code, first) = sender.pin_step(mac.first()).await;
+    assert_eq!(code, 200);
+    let (code, _) = sender.pin_step(mac.second(&first.unwrap(), &wrong)).await;
+    assert_eq!(code, 470);
+    assert!(test.pairing_events().contains(&PairingEvent::Failed {
+        address: "127.0.0.1".into(),
+        reason: PairingFailure::WrongPin,
+    }));
+
+    // Going on to step 3 anyway gets nowhere…
+    let mut fake = Dictionary::new();
+    fake.insert("epk".into(), Value::Data(vec![0; 32]));
+    fake.insert("authTag".into(), Value::Data(vec![0; 16]));
+    assert_eq!(sender.pin_step(fake).await.0, 470);
+    // …nor does trying the right PIN without a new one on screen…
+    assert_eq!(sender.pin_step(mac.first()).await.0, 470);
+    // …nor skipping to pair-verify.
+    assert_eq!(sender.pair_verify(&signing, 42).await.0, 470);
+    assert_eq!(test.receiver.trusted_devices(), 0);
 }
 
 /// Plays an iPhone against a receiver that is already running — the real app

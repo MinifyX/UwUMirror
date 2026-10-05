@@ -4,6 +4,9 @@
 //!
 //! 1. `GET /info` — what are you?
 //! 2. `POST /pair-setup`, `POST /pair-verify` (twice) — legacy pairing.
+//!    A Mac that wants a PIN sends `POST /pair-pin-start` and three
+//!    `POST /pair-setup-pin` in place of `/pair-setup` the first time, and
+//!    later goes straight to pair-verify (see `pin.rs`).
 //! 3. `POST /fp-setup` (twice) — FairPlay.
 //! 4. `SETUP` with `ekey`/`eiv` — the session key, and the timing port.
 //! 5. `SETUP` with stream 110 — the picture; we answer with a TCP port.
@@ -17,6 +20,7 @@ use std::io::Cursor;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::time::Instant;
 
 use plist::{Dictionary, Value};
 use sha2::{Digest, Sha512};
@@ -29,6 +33,7 @@ use uwumirror_core::{next_stream_id, StreamEvent, StreamInfo, StreamKind};
 use crate::advertise;
 use crate::fairplay::FairPlay;
 use crate::pairing::PairVerify;
+use crate::pin::{Outcome, PairingEvent, PinSetup};
 use crate::rtsp::{self, Request, Response};
 use crate::{mirror, sound, timing, Shared};
 
@@ -96,6 +101,10 @@ pub struct Connection {
     peer: SocketAddr,
     fairplay: FairPlay,
     verify: PairVerify,
+    pin: PinSetup,
+    /// This connection did pair-setup (with or without a PIN); without it,
+    /// pair-verify is for devices that paired with a PIN before.
+    set_up: bool,
     session_key: Option<[u8; 16]>,
     iv: Option<[u8; 16]>,
     stream: Option<Stream>,
@@ -134,6 +143,8 @@ impl Connection {
             peer,
             fairplay: FairPlay::default(),
             verify: PairVerify::default(),
+            pin: PinSetup::default(),
+            set_up: false,
             session_key: None,
             iv: None,
             stream: None,
@@ -184,7 +195,14 @@ impl Connection {
                 ))
             }
             ("POST", "/pair-setup") if request.body.len() == 32 => {
+                self.set_up = true;
                 Response::ok().octets(self.shared.identity.public_key().to_vec())
+            }
+            ("POST", "/pair-pin-start") => self.pair_pin_start(),
+            ("POST", "/pair-setup-pin") => self.pair_setup_pin(request),
+            ("POST", "/pair-verify") if !self.may_verify(&request.body) => {
+                tracing::info!(peer = %self.peer, "pair-verify from a device that must pair first");
+                Response::status(470, "Connection Authorization Required")
             }
             ("POST", "/pair-verify") => {
                 match self.verify.step(&self.shared.identity, &request.body) {
@@ -235,6 +253,92 @@ impl Connection {
         } else {
             response
         }
+    }
+
+    fn pairing_event(&self, event: PairingEvent) {
+        (self.shared.on_pairing)(event);
+    }
+
+    fn address(&self) -> String {
+        self.peer.ip().to_string()
+    }
+
+    /// `POST /pair-pin-start`: a new PIN on screen.
+    fn pair_pin_start(&mut self) -> Response {
+        let started = self.shared.pin.lock().start(Instant::now());
+        match started {
+            Ok(pin) => {
+                tracing::info!(peer = %self.peer, "a device asks for a PIN");
+                self.pairing_event(PairingEvent::PinRequested {
+                    pin,
+                    address: self.address(),
+                });
+                Response::ok()
+            }
+            Err(error) => {
+                tracing::warn!(peer = %self.peer, %error, "pair-pin-start");
+                self.pairing_event(PairingEvent::Failed {
+                    address: self.address(),
+                    reason: error.failure(),
+                });
+                Response::status(503, "Service Unavailable")
+            }
+        }
+    }
+
+    /// `POST /pair-setup-pin`, one of its three steps.
+    fn pair_setup_pin(&mut self, request: &Request) -> Response {
+        let refused = || Response::status(470, "Client Authentication Failure");
+        // Each step is a small plist; nothing larger needs reading.
+        if request.body.len() > 4096 {
+            return refused();
+        }
+        let Some(body) = parse_plist(&request.body).and_then(Value::into_dictionary) else {
+            return refused();
+        };
+        let outcome = self.pin.step(
+            &self.shared.pin,
+            &self.shared.identity,
+            &body,
+            Instant::now(),
+        );
+        match outcome {
+            Ok(Outcome::Reply(reply)) => Response::ok().plist(&Value::Dictionary(reply)),
+            Ok(Outcome::Paired { reply, user, key }) => {
+                tracing::info!(peer = %self.peer, device = %user, "paired with a PIN");
+                if let Err(error) = self.shared.trusted.lock().add(key, &user) {
+                    tracing::warn!(%error, "remembering a trusted AirPlay device");
+                }
+                self.set_up = true;
+                self.pairing_event(PairingEvent::Paired {
+                    address: self.address(),
+                    device: user,
+                });
+                Response::ok().plist(&Value::Dictionary(reply))
+            }
+            Err(error) => {
+                tracing::warn!(peer = %self.peer, %error, "pair-setup-pin");
+                self.pairing_event(PairingEvent::Failed {
+                    address: self.address(),
+                    reason: error.failure(),
+                });
+                refused()
+            }
+        }
+    }
+
+    /// Whether this `pair-verify` may go ahead. After pair-setup on this
+    /// connection, always — that is how iPhones come. Without it, only a
+    /// device that paired with a PIN before: Macs remember the receiver and
+    /// skip pair-setup next time, and anyone else doing that is told to pair
+    /// (470), which makes a Mac ask for a PIN again.
+    fn may_verify(&self, body: &[u8]) -> bool {
+        if self.set_up || body.first() != Some(&1) || body.len() != 4 + 32 + 32 {
+            return true;
+        }
+        let mut key = [0u8; 32];
+        key.copy_from_slice(&body[36..68]);
+        self.shared.trusted.lock().contains(&key)
     }
 
     fn set_parameter(&mut self, request: &Request) {
