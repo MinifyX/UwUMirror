@@ -3,8 +3,10 @@
 //! On Windows `UWUMIRROR_SETUP_PAYLOAD` points at the built
 //! `uwumirror-desktop.exe` and `UWUMIRROR_SETUP_SCRCPY_SERVER` at scrcpy's
 //! device server, which the app pushes to Android phones and looks for next to
-//! itself (Tauri's resource folder on Windows is the program's own folder).
-//! Each is compressed on its own.
+//! itself (Tauri's resource folder on Windows is the program's own folder),
+//! and `UWUMIRROR_SETUP_FFMPEG` at the folder with the app's own FFmpeg
+//! (scripts/build-ffmpeg.sh), which goes into an `ffmpeg` folder next to it.
+//! Each is compressed on its own, the FFmpeg folder as a tar archive.
 //!
 //! On macOS and Linux the app is a folder — `UwUMirror.app`, or the AppDir
 //! `UwUMirror` — with the server already inside, and `UWUMIRROR_SETUP_PAYLOAD`
@@ -86,8 +88,9 @@ fn archive(dir: &Path) -> Vec<u8> {
     builder.into_inner().expect("finishing the archive")
 }
 
-/// The app's folder for macOS and Linux.
-fn pack_folder(variable: &str) {
+/// A folder as one compressed tar archive: the app's for macOS and Linux,
+/// FFmpeg's for Windows.
+fn pack_folder(variable: &str, name: &str, size_env: &str) {
     println!("cargo:rerun-if-env-changed={variable}");
     let (payload, size) = match std::env::var_os(variable).filter(|path| !path.is_empty()) {
         Some(path) => {
@@ -98,13 +101,17 @@ fn pack_folder(variable: &str) {
         }
         None => (Vec::new(), 0),
     };
-    std::fs::write(out("payload.zst"), payload).expect("writing the payload");
-    println!("cargo:rustc-env=UWUMIRROR_SETUP_PAYLOAD_SIZE={size}");
+    std::fs::write(out(name), payload).expect("writing the payload");
+    println!("cargo:rustc-env={size_env}={size}");
 }
 
 fn main() {
     if std::env::var("CARGO_CFG_TARGET_FAMILY").as_deref() == Ok("unix") {
-        pack_folder("UWUMIRROR_SETUP_PAYLOAD");
+        pack_folder(
+            "UWUMIRROR_SETUP_PAYLOAD",
+            "payload.zst",
+            "UWUMIRROR_SETUP_PAYLOAD_SIZE",
+        );
     } else {
         pack_file(
             "UWUMIRROR_SETUP_PAYLOAD",
@@ -115,6 +122,11 @@ fn main() {
             "UWUMIRROR_SETUP_SCRCPY_SERVER",
             "scrcpy-server.zst",
             "UWUMIRROR_SETUP_SCRCPY_SERVER_SIZE",
+        );
+        pack_folder(
+            "UWUMIRROR_SETUP_FFMPEG",
+            "ffmpeg.zst",
+            "UWUMIRROR_SETUP_FFMPEG_SIZE",
         );
     }
     // The setup usually runs from Downloads, next to whatever else was

@@ -37,3 +37,7 @@ pnpm-debug.log*
 
 # Agent worktrees
 .claude/worktrees/
+
+# Built by scripts/build-ffmpeg.sh for the Windows and macOS downloads
+apps/desktop/src-tauri/resources/ffmpeg/*
+!apps/desktop/src-tauri/resources/ffmpeg/README.txt

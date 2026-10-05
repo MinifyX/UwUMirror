@@ -4,7 +4,7 @@ Categories=AudioVideo;Video;Network;
 Comment={{comment}}
 {{/if}}
 Exec={{exec}}
-Keywords=AirPlay;Mirror;Screen Mirroring;Android;iPhone;iPad;Cast;scrcpy;
+Keywords=AirPlay;Miracast;Mirror;Mirroring;Screen Mirroring;Screen;Cast;Receiver;Android;iPhone;iPad;scrcpy;Spiegeln;Bildschirm;Bildschirm spiegeln;Spiegel;
 StartupWMClass={{exec}}
 Icon={{icon}}
 Name=UwUMirror

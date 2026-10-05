@@ -27,6 +27,8 @@ pub const APP_EXE: &str = "UwUMirror.exe";
 /// scrcpy's device server. The app finds it in its resource folder, which for
 /// a Windows program is the folder it runs from.
 pub const SCRCPY_SERVER: &str = "scrcpy-server";
+/// libavcodec and libavutil for AirPlay's sound, in the resource folder too.
+pub const FFMPEG_DIR: &str = "ffmpeg";
 pub const UNINSTALL_EXE: &str = "uninstall.exe";
 pub const APP_ID: &str = "app.uwumirror.desktop";
 const SHORTCUT: &str = "UwUMirror.lnk";
@@ -38,10 +40,12 @@ static PAYLOAD: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/payload.zst"))
 const PAYLOAD_SIZE: &str = env!("UWUMIRROR_SETUP_PAYLOAD_SIZE");
 static SCRCPY_PAYLOAD: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/scrcpy-server.zst"));
 const SCRCPY_PAYLOAD_SIZE: &str = env!("UWUMIRROR_SETUP_SCRCPY_SERVER_SIZE");
+static FFMPEG_PAYLOAD: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/ffmpeg.zst"));
 
-/// Both halves are needed: without the server, Android mirroring can't start.
+/// All three are needed: without the server Android mirroring can't start,
+/// without FFmpeg AirPlay is silent.
 pub fn has_payload() -> bool {
-    !PAYLOAD.is_empty() && !SCRCPY_PAYLOAD.is_empty()
+    !PAYLOAD.is_empty() && !SCRCPY_PAYLOAD.is_empty() && !FFMPEG_PAYLOAD.is_empty()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -221,8 +225,41 @@ fn extract(
     Ok(())
 }
 
-/// Both packed files into `dir` under `<name><suffix>`, reporting through the
-/// copy step. The program is nearly all of it; the server is a few hundred KB.
+/// FFmpeg's packed folder into `target`, replacing what was there: the DLLs'
+/// names carry their version, so an older one must not stay behind.
+fn extract_ffmpeg(target: &Path) -> Result<(), String> {
+    if FFMPEG_PAYLOAD.is_empty() {
+        return Err("This setup was built without FFmpeg inside (a development build).".into());
+    }
+    if target.exists() {
+        std::fs::remove_dir_all(target)
+            .map_err(|e| format!("Couldn't replace {}: {e}", target.display()))?;
+    }
+    std::fs::create_dir_all(target)
+        .map_err(|e| format!("Couldn't create {}: {e}", target.display()))?;
+    let damaged = |e: std::io::Error| format!("The packed FFmpeg is damaged: {e}");
+    let decoder = zstd::Decoder::new(FFMPEG_PAYLOAD).map_err(damaged)?;
+    let mut archive = tar::Archive::new(decoder);
+    for entry in archive.entries().map_err(damaged)? {
+        let mut entry = entry.map_err(damaged)?;
+        // Plain files at the top only: nothing in the archive picks a path.
+        let path = entry.path().map_err(damaged)?.into_owned();
+        let Some(name) = path.file_name().filter(|_| path.components().count() == 1) else {
+            continue;
+        };
+        if !entry.header().entry_type().is_file() {
+            continue;
+        }
+        let file = target.join(name);
+        entry
+            .unpack(&file)
+            .map_err(|e| format!("Couldn't write {}: {e}", file.display()))?;
+    }
+    Ok(())
+}
+
+/// The packed files into `dir` under `<name><suffix>`, and FFmpeg into its
+/// folder, reporting through the copy step. The program is nearly all of it.
 fn extract_all(dir: &Path, suffix: &str, progress: Progress) -> Result<(), String> {
     extract(
         PAYLOAD,
@@ -234,8 +271,11 @@ fn extract_all(dir: &Path, suffix: &str, progress: Progress) -> Result<(), Strin
         SCRCPY_PAYLOAD,
         SCRCPY_PAYLOAD_SIZE,
         &dir.join(format!("{SCRCPY_SERVER}{suffix}")),
-        &mut |done| progress(Step::Copy, 0.95 + done * 0.05),
-    )
+        &mut |done| progress(Step::Copy, 0.95 + done * 0.04),
+    )?;
+    extract_ffmpeg(&dir.join(FFMPEG_DIR))?;
+    progress(Step::Copy, 1.0);
+    Ok(())
 }
 
 /// Unpacks everything into `dir` (which must not exist yet) and checks that
@@ -256,6 +296,24 @@ pub fn check_payload(dir: &Path) -> Result<String, String> {
             return Err(format!("{} isn't what it should be.", path.display()));
         }
         report.push(format!("ok  {} ({} bytes)", path.display(), bytes.len()));
+    }
+    let ffmpeg = dir.join(FFMPEG_DIR);
+    for library in ["avcodec-", "avutil-"] {
+        let found = std::fs::read_dir(&ffmpeg)
+            .map_err(|e| format!("{} is missing: {e}", ffmpeg.display()))?
+            .flatten()
+            .map(|entry| entry.path())
+            .find(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with(library) && name.ends_with(".dll"))
+            })
+            .ok_or_else(|| format!("{library}*.dll is missing in {}.", ffmpeg.display()))?;
+        let bytes = std::fs::read(&found).map_err(|e| format!("{}: {e}", found.display()))?;
+        if !bytes.starts_with(b"MZ") {
+            return Err(format!("{} isn't what it should be.", found.display()));
+        }
+        report.push(format!("ok  {} ({} bytes)", found.display(), bytes.len()));
     }
     Ok(report.join("\n"))
 }
@@ -347,7 +405,9 @@ pub fn install(
     let shortcut = system::Shortcut {
         target: &app,
         arguments: "",
-        description: "UwUMirror",
+        // Start's search looks at a shortcut's comment too, so these words
+        // find UwUMirror even when nobody remembers its name.
+        description: "UwUMirror: AirPlay, Miracast, Screen Mirroring, Bildschirm spiegeln, iPhone, Android, Cast",
         app_id: APP_ID,
     };
     system::create_shortcut(&layout.start_menu.join(SHORTCUT), &shortcut)?;
@@ -440,6 +500,13 @@ pub fn uninstall(
                 path.display()
             ));
         }
+    }
+    let ffmpeg = dir.join(FFMPEG_DIR);
+    if ffmpeg.exists() && std::fs::remove_dir_all(&ffmpeg).is_err() {
+        return Err(format!(
+            "Couldn't remove {}. Is UwUMirror still open?",
+            ffmpeg.display()
+        ));
     }
     let _ = std::fs::remove_dir(dir);
     progress(Step::Copy, 1.0);

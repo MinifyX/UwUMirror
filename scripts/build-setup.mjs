@@ -72,6 +72,21 @@ console.log('\n▸ Fetching scrcpy-server');
 run('node scripts/fetch-scrcpy-server.mjs');
 const scrcpyServer = join(root, 'apps/desktop/src-tauri/resources/scrcpy-server');
 
+// AirPlay's sound needs FFmpeg; Windows and macOS carry their own, built by
+// scripts/build-ffmpeg.sh (CI does that before this). Linux packages depend on
+// the distribution's instead.
+const ffmpeg = join(root, 'apps/desktop/src-tauri/resources/ffmpeg');
+if (process.platform === 'win32' || process.platform === 'darwin') {
+  const libraries = existsSync(ffmpeg)
+    ? readdirSync(ffmpeg).filter((name) => /^(lib)?av(codec|util)[.-]\d+\.(dll|dylib)$/.test(name))
+    : [];
+  if (libraries.length !== 2) {
+    fail(
+      `Expected libavcodec and libavutil in ${ffmpeg}, found ${libraries.join(', ') || 'nothing'}. Run scripts/build-ffmpeg.sh first.`,
+    );
+  }
+}
+
 const release = join(root, 'target', ...(target ? [target] : []), 'release');
 const bundles = join(release, 'bundle');
 const out = join(root, 'target', 'installers');
@@ -105,12 +120,13 @@ if (process.platform === 'win32') {
   const app = join(release, 'uwumirror-desktop.exe');
   if (!existsSync(app)) fail(`Missing ${app}`);
 
-  // The program and, next to it, the server it pushes to Android phones: a
-  // Windows program's resource folder is its own folder.
+  // The program and, next to it, the server it pushes to Android phones and
+  // its FFmpeg: a Windows program's resource folder is its own folder.
   console.log('\n▸ Packing it into the setup');
   run(`pnpm --filter @uwumirror/setup tauri build --no-bundle${targetArg}`, {
     UWUMIRROR_SETUP_PAYLOAD: app,
     UWUMIRROR_SETUP_SCRCPY_SERVER: scrcpyServer,
+    UWUMIRROR_SETUP_FFMPEG: ffmpeg,
   });
   const setup = join(out, `UwUMirror-windows-${arch()}-setup.exe`);
   copyFileSync(join(release, 'uwumirror-setup.exe'), setup);

@@ -14,14 +14,14 @@ pkgdesc='AirPlay and Android screen mirroring to your own computer'
 arch=('x86_64' 'aarch64')
 url='https://github.com/MinifyX/UwUMirror'
 license=('AGPL-3.0-only')
-depends=('webkit2gtk-4.1' 'gtk3' 'alsa-lib')
-# Everything here is found at runtime; without it UwUMirror still starts and
-# says what is missing where it is missing.
+# ffmpeg: AirPlay's sound (AAC-ELD, through libavcodec); gst-libav and
+# gst-plugins-good: the H.264 picture in WebKitGTK. Without them it mirrors
+# silently or not at all, so they come along.
+depends=('webkit2gtk-4.1' 'gtk3' 'alsa-lib' 'ffmpeg' 'gst-libav' 'gst-plugins-good')
+# Found at runtime; without it UwUMirror still starts and says what is missing
+# where it is missing.
 optdepends=(
   'android-tools: Android mirroring over wireless debugging or USB (adb)'
-  'ffmpeg: sound for AirPlay screen mirroring (AAC-ELD, through libavcodec)'
-  'gst-libav: H.264 video decoding for the mirrored picture (WebKitGTK)'
-  'gst-plugins-good: H.264 video playback for the mirrored picture (WebKitGTK)'
 )
 provides=("$_pkgname")
 conflicts=("$_pkgname")

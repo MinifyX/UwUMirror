@@ -15,15 +15,16 @@ zstd = "0.13"
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
+# Folders arrive packed as tar: the app on macOS and Linux (an .app, an
+# AppDir), FFmpeg's on Windows.
+tar = "0.4"
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 zstd = "0.13"
 
-# macOS and Linux: the app arrives as a folder (an .app, an AppDir) packed as
-# tar, and processes are found and ended through the C library.
+# macOS and Linux: processes are found and ended through the C library.
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-tar = "0.4"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"

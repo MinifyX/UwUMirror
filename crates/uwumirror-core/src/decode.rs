@@ -7,8 +7,10 @@
 //! (on macOS one `brew install ffmpeg` away; on Windows it takes a "shared"
 //! build, the one with `avcodec-*.dll`: on the `PATH`, next to an
 //! `ffmpeg.exe` on it, or from winget).
-//! So UwUMirror doesn't ship a decoder: it loads libavcodec and libavutil at
-//! runtime, from the system, and only when a stream actually has sound.
+//! So UwUMirror loads libavcodec and libavutil at runtime, and only when a
+//! stream actually has sound: the Windows and macOS downloads carry a tiny
+//! build of their own (scripts/build-ffmpeg.sh), tried first; the Linux
+//! packages depend on the distribution's; and the system's is the fallback.
 //!
 //! Only a handful of functions and the leading fields of three structs are
 //! used — `AVPacket`'s, `AVFrame`'s and `AVCodecParameters`' — which have
@@ -152,8 +154,30 @@ struct Api {
 /// libavcodec major version → the libavutil major it was released with.
 const VERSIONS: [(u32, u32); 6] = [(63, 61), (62, 60), (61, 59), (60, 58), (59, 57), (58, 56)];
 
+/// The FFmpeg the app carries (see scripts/build-ffmpeg.sh), if it does.
+static BUNDLED: Mutex<Option<std::path::PathBuf>> = Mutex::new(None);
+
+/// Where the app's own libavcodec and libavutil are; looked at before the
+/// system's. Call before the first stream with sound.
+pub fn set_bundled_ffmpeg(dir: std::path::PathBuf) {
+    *BUNDLED.lock() = Some(dir);
+}
+
 fn candidates(name: &str, major: u32) -> Vec<String> {
     let mut names = Vec::new();
+    if let Some(dir) = BUNDLED.lock().as_ref() {
+        let file = if cfg!(target_os = "windows") {
+            format!("{name}-{major}.dll")
+        } else if cfg!(target_os = "macos") {
+            format!("lib{name}.{major}.dylib")
+        } else {
+            format!("lib{name}.so.{major}")
+        };
+        let path = dir.join(file);
+        if path.is_file() {
+            names.push(path.display().to_string());
+        }
+    }
     if cfg!(target_os = "windows") {
         names.push(format!("{name}-{major}.dll"));
         for dir in windows_ffmpeg_dirs() {
