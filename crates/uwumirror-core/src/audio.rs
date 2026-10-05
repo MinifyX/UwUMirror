@@ -5,13 +5,15 @@
 //! a short buffer. Mirroring is live, so latency wins over completeness: a
 //! buffer that grows past a few hundred milliseconds (a device that sends a
 //! little faster than we play, a hiccup on Wi-Fi) is cut back instead of
-//! letting the sound drift further and further behind the picture.
+//! letting the sound drift further and further behind the picture. How short
+//! is the source's choice ([`Buffering`]): a phone's bursty Wi-Fi needs more
+//! than another computer that sends every 10 ms.
 //!
 //! cpal's stream isn't `Send` on every system, so it lives on a thread of its
 //! own for as long as the player does.
 
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread::JoinHandle;
 
@@ -27,16 +29,51 @@ pub enum AudioError {
     Device(String),
 }
 
-/// Played before the first sound comes out, and again after running dry.
-const PRIME_SECONDS: f32 = 0.06;
-/// More than this waiting in the buffer, and it is cut back to `TRIM_TO_SECONDS`.
-const MAX_SECONDS: f32 = 0.3;
-const TRIM_TO_SECONDS: f32 = 0.1;
+/// How much sound a player keeps between arriving and playing: the
+/// trade between latency and dropouts, which differs by source.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Buffering {
+    /// Waited for before the first sound comes out, and again after
+    /// running dry.
+    pub prime_seconds: f32,
+    /// More than this waiting, and it is cut back to `trim_to_seconds`.
+    pub max_seconds: f32,
+    pub trim_to_seconds: f32,
+}
+
+impl Buffering {
+    /// For sound that comes over Wi-Fi from a phone, in bursts: AirPlay and
+    /// Android.
+    pub const DEFAULT: Self = Self {
+        prime_seconds: 0.06,
+        max_seconds: 0.3,
+        trim_to_seconds: 0.1,
+    };
+
+    /// For sound that comes steadily and often, every 10 ms from another
+    /// computer on the same network (UwUCast): just enough to ride out a
+    /// late packet, and close behind the picture.
+    pub const TIGHT: Self = Self {
+        prime_seconds: 0.02,
+        max_seconds: 0.08,
+        trim_to_seconds: 0.03,
+    };
+}
+
+impl Default for Buffering {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
 
 struct Shared {
     buffer: Mutex<VecDeque<f32>>,
     rate: u32,
     channels: usize,
+    buffering: Buffering,
+    /// The most samples the device has asked for at once. A buffer tighter
+    /// than that runs dry at every turn, so none of the limits go below it.
+    callback: AtomicUsize,
     /// Linear gain as f32 bits.
     volume: AtomicU32,
     primed: AtomicBool,
@@ -44,14 +81,30 @@ struct Shared {
 
 impl Shared {
     fn samples(&self, seconds: f32) -> usize {
-        (self.rate as f32 * seconds) as usize * self.channels
+        (self.rate as f32 * seconds).round() as usize * self.channels
+    }
+
+    /// The buffer's limits in samples: prime, most, and what to cut back to.
+    fn limits(&self) -> (usize, usize, usize) {
+        let callback = self.callback.load(Ordering::Relaxed);
+        let Buffering {
+            prime_seconds,
+            max_seconds,
+            trim_to_seconds,
+        } = self.buffering;
+        (
+            self.samples(prime_seconds).max(callback),
+            self.samples(max_seconds).max(3 * callback),
+            self.samples(trim_to_seconds).max(2 * callback),
+        )
     }
 
     fn fill<T: SizedSample + FromSample<f32>>(&self, out: &mut [T]) {
+        self.callback.fetch_max(out.len(), Ordering::Relaxed);
         let volume = f32::from_bits(self.volume.load(Ordering::Relaxed));
         let mut buffer = self.buffer.lock();
         if !self.primed.load(Ordering::Relaxed) {
-            if buffer.len() >= self.samples(PRIME_SECONDS) {
+            if buffer.len() >= self.limits().0 {
                 self.primed.store(true, Ordering::Relaxed);
             } else {
                 out.fill(T::from_sample(0.0));
@@ -165,14 +218,20 @@ pub struct AudioPlayer {
 }
 
 impl AudioPlayer {
-    /// Opens the default output for PCM at `rate` with `channels` channels.
+    /// Opens the default output for PCM at `rate` with `channels` channels,
+    /// buffered as [`Buffering::DEFAULT`].
     pub fn open(rate: u32, channels: usize) -> Result<Self, AudioError> {
+        Self::open_with(rate, channels, Buffering::DEFAULT)
+    }
+
+    /// [`AudioPlayer::open`] with a buffer of its own.
+    pub fn open_with(rate: u32, channels: usize, buffering: Buffering) -> Result<Self, AudioError> {
         let (ready_tx, ready_rx) = mpsc::channel::<Result<Arc<Shared>, AudioError>>();
         let (stop_tx, stop_rx) = mpsc::channel::<()>();
         let thread = std::thread::Builder::new()
             .name("uwumirror-audio".into())
             .spawn(move || {
-                let stream = match build_stream() {
+                let stream = match build_stream(buffering) {
                     Ok((stream, shared)) => {
                         let _ = ready_tx.send(Ok(shared));
                         stream
@@ -211,8 +270,9 @@ impl AudioPlayer {
         let converted = self.converter.lock().convert(samples);
         let mut buffer = self.shared.buffer.lock();
         buffer.extend(converted);
-        if buffer.len() > self.shared.samples(MAX_SECONDS) {
-            let excess = buffer.len() - self.shared.samples(TRIM_TO_SECONDS);
+        let (_, most, trim_to) = self.shared.limits();
+        if buffer.len() > most {
+            let excess = buffer.len() - trim_to;
             // Whole frames only, or left and right swap places.
             let excess = excess - excess % self.shared.channels;
             buffer.drain(..excess);
@@ -248,7 +308,7 @@ impl Drop for AudioPlayer {
     }
 }
 
-fn build_stream() -> Result<(cpal::Stream, Arc<Shared>), AudioError> {
+fn build_stream(buffering: Buffering) -> Result<(cpal::Stream, Arc<Shared>), AudioError> {
     let host = cpal::default_host();
     let device = host.default_output_device().ok_or(AudioError::NoDevice)?;
     let supported = device
@@ -260,6 +320,8 @@ fn build_stream() -> Result<(cpal::Stream, Arc<Shared>), AudioError> {
         buffer: Mutex::new(VecDeque::new()),
         rate: config.sample_rate.0,
         channels: config.channels.max(1) as usize,
+        buffering,
+        callback: AtomicUsize::new(0),
         volume: AtomicU32::new(1.0f32.to_bits()),
         primed: AtomicBool::new(false),
     });
@@ -312,6 +374,24 @@ mod tests {
             last: None,
             t: 0.0,
         }
+    }
+
+    #[test]
+    fn tight_buffers_never_go_below_what_the_device_takes() {
+        let shared = Shared {
+            buffer: Mutex::new(VecDeque::new()),
+            rate: 48_000,
+            channels: 2,
+            buffering: Buffering::TIGHT,
+            callback: AtomicUsize::new(0),
+            volume: AtomicU32::new(1.0f32.to_bits()),
+            primed: AtomicBool::new(false),
+        };
+        // 20 ms, 80 ms and 30 ms of stereo.
+        assert_eq!(shared.limits(), (1920, 7680, 2880));
+        // A device that takes 40 ms at a time.
+        shared.fill(&mut [0f32; 3840]);
+        assert_eq!(shared.limits(), (3840, 11_520, 7680));
     }
 
     #[test]

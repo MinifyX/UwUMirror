@@ -14,7 +14,7 @@ use parking_lot::Mutex;
 use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::{AbortHandle, JoinHandle};
-use uwumirror_core::audio::AudioPlayer;
+use uwumirror_core::audio::{AudioPlayer, Buffering};
 use uwumirror_core::{
     next_stream_id, AudioStatus, EventSink, StreamEvent, StreamInfo, StreamKind, VideoPacket,
 };
@@ -319,7 +319,9 @@ async fn pump(socket: TcpStream, id: u64, audio: bool, sink: &EventSink) -> Opti
                     continue;
                 }
                 if player.is_none() {
-                    match AudioPlayer::open(AUDIO_RATE, AUDIO_CHANNELS) {
+                    // A sender's sound comes every 10 ms over a local
+                    // network: a tight buffer keeps it with the picture.
+                    match AudioPlayer::open_with(AUDIO_RATE, AUDIO_CHANNELS, Buffering::TIGHT) {
                         Ok(opened) => {
                             player = Some(opened);
                             sink(StreamEvent::Audio {
