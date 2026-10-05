@@ -48,6 +48,37 @@ pub struct SoundParams {
     pub enabled: bool,
 }
 
+/// What came of the sound so far, for the log: whether packets arrive, decode
+/// and are more than silence tells apart the ways a stream can stay quiet.
+#[derive(Default)]
+struct Stats {
+    packets: u64,
+    /// Packets the decoder gave nothing for.
+    empty: u64,
+    samples: u64,
+    /// Loudest sample since the last report.
+    peak: f32,
+    reported: u64,
+}
+
+impl Stats {
+    /// Logs after the first packet, then every 1000 (about every 10 s).
+    fn report(&mut self, id: u64) {
+        if self.packets == 1 || self.packets >= self.reported + 1000 {
+            tracing::info!(
+                id,
+                packets = self.packets,
+                undecoded = self.empty,
+                samples = self.samples,
+                peak = self.peak,
+                "AirPlay sound"
+            );
+            self.reported = self.packets;
+            self.peak = 0.0;
+        }
+    }
+}
+
 /// `seq` is newer than `last`, allowing for the 16-bit wrap.
 fn newer(seq: u16, last: u16) -> bool {
     let diff = seq.wrapping_sub(last);
@@ -64,6 +95,8 @@ pub async fn run(data: UdpSocket, control: UdpSocket, params: SoundParams) {
     };
     // Sound that can't be played is still received, so the sender's packets
     // don't bounce as unreachable.
+    tracing::info!(id = params.id, codec = ?params.codec, enabled = params.enabled, "AirPlay sound starts");
+    let mut stats = Stats::default();
     let player = if !params.enabled {
         status(AudioStatus::Off);
         None
@@ -81,6 +114,11 @@ pub async fn run(data: UdpSocket, control: UdpSocket, params: SoundParams) {
             }
             Some(Ok(decoder)) => match AudioPlayer::open(44_100, 2) {
                 Ok(player) => {
+                    tracing::info!(
+                        id = params.id,
+                        ffmpeg = ?uwumirror_core::decode::ffmpeg_version(),
+                        "AirPlay sound decoder and output open"
+                    );
                     status(AudioStatus::Playing);
                     Some((decoder, player))
                 }
@@ -136,13 +174,20 @@ pub async fn run(data: UdpSocket, control: UdpSocket, params: SoundParams) {
         if volume.to_bits() != gain.to_bits() {
             gain = volume;
             output.set_volume(volume_to_gain(volume));
+            tracing::info!(id = params.id, db = volume, "AirPlay volume");
         }
         let payload = &mut packet[12..];
         decrypt(&params.key, &params.iv, payload);
         let samples = decoder.decode(payload);
-        if !samples.is_empty() {
+        stats.packets += 1;
+        if samples.is_empty() {
+            stats.empty += 1;
+        } else {
+            stats.samples += samples.len() as u64;
+            stats.peak = samples.iter().fold(stats.peak, |peak, s| peak.max(s.abs()));
             output.push_f32(&samples);
         }
+        stats.report(params.id);
     }
 }
 

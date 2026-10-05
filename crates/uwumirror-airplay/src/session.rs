@@ -376,6 +376,13 @@ impl Connection {
                     }
                     Some(96) => {
                         let codec = unsigned(entry, "ct").and_then(AudioCodec::from_airplay_ct);
+                        tracing::info!(
+                            peer = %self.peer,
+                            ct = ?unsigned(entry, "ct"),
+                            audio_format = ?unsigned(entry, "audioFormat"),
+                            spf = ?unsigned(entry, "spf"),
+                            "SETUP for sound"
+                        );
                         let (Ok(data), Ok(control)) = (
                             UdpSocket::bind(ipv4_any()).await,
                             UdpSocket::bind(ipv4_any()).await,
