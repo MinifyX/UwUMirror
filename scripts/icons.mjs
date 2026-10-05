@@ -3,9 +3,9 @@
 //   node scripts/icons.mjs
 //
 // The taskbar, the window, the setup and Linux menus get Nyu without the tile:
-// brand/uwumirror-taskbar-icon.svg, upright, on a transparent background. At 16 and 24 px the ICO
-// uses brand/uwumirror-taskbar-icon-small.svg instead, with thicker outlines, a faceless glass and
-// a single wave, which otherwise turn to mush at that size. The macOS icon.icns and the Square*/StoreLogo tiles
+// brand/uwumirror-taskbar-icon.svg: the hand mirror alone, upright, on a transparent background. At 16 and 24 px the ICO
+// uses brand/uwumirror-taskbar-icon-small.svg instead, with thicker outlines and no shine,
+// which otherwise turns to mush at that size. The macOS icon.icns and the Square*/StoreLogo tiles
 // come from the app icon, brand/uwumirror-app-icon.svg, like the website and GitHub.
 
 import { execFileSync } from 'node:child_process';

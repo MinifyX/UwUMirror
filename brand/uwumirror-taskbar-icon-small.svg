@@ -1,36 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="UwUMirror: a hand mirror with cat ears, and a phone sending its picture to it">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="512" height="512" role="img" aria-label="UwUMirror: a hand mirror with cat ears">
   <title>UwUMirror</title>
   <!--
-    16 and 24 px cut of uwumirror-taskbar-icon.svg: thicker outlines, the
-    glass and the phone's screen as flat shapes, one wave, no face, gem,
-    shine or inner ears.
+    16 and 24 px cut of uwumirror-taskbar-icon.svg: thicker outlines and no
+    shine, which otherwise turn to mush at that size.
   -->
-  <g transform="translate(12 0)" stroke-linecap="round" stroke-linejoin="round">
-    <g transform="translate(300 232) scale(1.42) translate(-128 -142)">
-      <g fill="#FFFFFF" stroke="#FFFFFF" stroke-width="24">
-        <path d="M62 96 L80 36 L114 84 Z"/>
-        <path d="M142 84 L176 36 L194 96 Z"/>
-        <rect x="114" y="206" width="28" height="42" rx="12"/>
-        <ellipse cx="128" cy="142" rx="100" ry="86"/>
-      </g>
-      <g fill="#FF6FA6" stroke="#4B1D3F" stroke-width="18">
-        <path d="M62 96 L80 36 L114 84 Z"/>
-        <path d="M142 84 L176 36 L194 96 Z"/>
-        <rect x="114" y="206" width="28" height="42" rx="12"/>
-        <ellipse cx="128" cy="142" rx="100" ry="86"/>
-      </g>
-      <ellipse cx="128" cy="146" rx="72" ry="56" fill="#FFB8D3"/>
-    </g>
-
-    <g transform="translate(160 292) rotate(-24)" fill="none">
-      <path d="M14 -34 q28 34 0 68" stroke="#FFFFFF" stroke-width="56"/>
-      <path d="M14 -34 q28 34 0 68" stroke="#A78BFA" stroke-width="28"/>
-    </g>
-
-    <g transform="translate(96 330) rotate(-10)">
-      <rect x="-46" y="-78" width="92" height="156" rx="22" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="54"/>
-      <rect x="-46" y="-78" width="92" height="156" rx="22" fill="#C9B6F0" stroke="#4B1D3F" stroke-width="26"/>
-      <rect x="-24" y="-52" width="48" height="98" rx="6" fill="#2B1F4A"/>
-    </g>
+  <g stroke="#4B1D3F" stroke-width="5" stroke-linejoin="round">
+    <path d="M12 22 L15 4 L27 13 Z" fill="#FF6FA6"/>
+    <path d="M37 13 L49 4 L52 22 Z" fill="#FF6FA6"/>
+    <rect x="27" y="44" width="10" height="17" rx="4" fill="#FF6FA6"/>
+    <ellipse cx="32" cy="27" rx="24" ry="20" fill="#FF6FA6"/>
+    <ellipse cx="32" cy="28" rx="15" ry="12" fill="#FFD3E5" stroke-width="4"/>
   </g>
 </svg>
