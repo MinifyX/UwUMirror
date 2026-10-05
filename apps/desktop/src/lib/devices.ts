@@ -6,10 +6,11 @@ import type { StreamState } from './api';
 import { t } from './i18n';
 import type { IconName } from '../components/Icon';
 
-/** An icon for what is mirroring: iPhone, iPad, Mac, sound only, Android. */
+/** An icon for what is mirroring: iPhone, iPad, Mac, sound only, Android, a computer. */
 export function streamIcon(stream: Pick<StreamState, 'kind' | 'model'>): IconName {
   if (stream.kind === 'android') return 'android';
   if (stream.kind === 'airplayaudio') return 'volume';
+  if (stream.kind === 'cast') return 'monitor';
   // A phone or a PC: Miracast doesn't say which.
   if (stream.kind === 'miracast') return 'cast';
   const model = stream.model ?? '';
@@ -18,13 +19,16 @@ export function streamIcon(stream: Pick<StreamState, 'kind' | 'model'>): IconNam
   return 'phone';
 }
 
-/** "AirPlay", "AirPlay-Ton", "Miracast" or "Android". */
-export function streamSource(stream: Pick<StreamState, 'kind'>): string {
+/** "AirPlay", "AirPlay-Ton", "Miracast", "Android", or what a sending computer
+ * runs on. */
+export function streamSource(stream: Pick<StreamState, 'kind' | 'model'>): string {
   switch (stream.kind) {
     case 'airplay':
       return 'AirPlay';
     case 'airplayaudio':
       return t('AirPlay-Ton');
+    case 'cast':
+      return stream.model ?? t('Computer');
     case 'miracast':
       return 'Miracast';
     default:

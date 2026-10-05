@@ -17,6 +17,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 uwumirror-airplay.workspace = true
 uwumirror-android.workspace = true
+uwumirror-cast.workspace = true
 uwumirror-core.workspace = true
 uwumirror-miracast.workspace = true
 

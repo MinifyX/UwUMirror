@@ -18,6 +18,8 @@ pub enum StreamKind {
     /// Miracast ("Smart View", "Cast", Win+K) through Windows' own receiver;
     /// its picture arrives decoded, as [`RawFrame`]s.
     Miracast,
+    /// Another computer running UwUMirror, over UwUCast.
+    Cast,
 }
 
 /// What the app shows about a stream while it runs.

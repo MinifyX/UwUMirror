@@ -1,6 +1,15 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, errorText, type AirplayStatus, type AppInfo, type Device } from './lib/api';
+import {
+  api,
+  errorText,
+  onCastSend,
+  type AirplayStatus,
+  type AppInfo,
+  type CastStatus,
+  type Device,
+  type SendStatus,
+} from './lib/api';
 import { t, useLanguage } from './lib/i18n';
 import { applyMiracast } from './lib/miracast';
 import {
@@ -27,6 +36,8 @@ export function App() {
   const [computer, setComputer] = useState('');
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [airplay, setAirplay] = useState<AirplayStatus | null>(null);
+  const [cast, setCast] = useState<CastStatus | null>(null);
+  const [sending, setSending] = useState<SendStatus | null>(null);
   const activeRef = useRef(activeId);
   activeRef.current = activeId;
   const backgroundRef = useRef<HTMLDivElement>(null);
@@ -131,6 +142,39 @@ export function App() {
     void applyMiracast();
   }, [settings.miracastEnabled, settings.miracastAudio]);
 
+  // Receiving from other computers follows its setting, under the same name.
+  useEffect(() => {
+    if (settings.castEnabled && !computer) return; // the name isn't known yet
+    let stale = false;
+    void api
+      .castApply({ enabled: settings.castEnabled, name })
+      .then((status) => !stale && setCast(status))
+      .catch((error) => !stale && setCast({ running: false, port: null, error: errorText(error) }));
+    return () => {
+      stale = true;
+    };
+  }, [computer, name, settings.castEnabled]);
+
+  // Sending this screen: its state, and a note when the other side ends it
+  // or it breaks off (stopping here needs no note).
+  useEffect(() => {
+    let receiver: string | null = null;
+    void api
+      .castSendStatus()
+      .then(setSending)
+      .catch(() => undefined);
+    const off = onCastSend((status) => {
+      if (status.ended?.how === 'byReceiver') {
+        showToast(t('„{name}“ hat das Senden beendet.', { name: receiver ?? '' }));
+      } else if (status.ended?.how === 'failed') {
+        showToast(t('Senden abgebrochen: {error}', { error: status.ended.error }), 'error');
+      }
+      receiver = status.receiver ?? receiver;
+      setSending(status);
+    });
+    return () => void off.then((unlisten) => unlisten());
+  }, []);
+
   // A stream that is gone falls back to the start page.
   useEffect(() => {
     if (activeId !== null && !streams.some((s) => s.id === activeId)) setActiveId(null);
@@ -213,9 +257,14 @@ export function App() {
             <Home
               streams={streams}
               receiverName={name}
+              computerName={computer || name}
               airplay={airplay}
+              cast={cast}
+              canSend={!!info?.castSend}
+              sending={sending}
               ffmpeg={info === null ? undefined : info.ffmpeg}
               onAirplayToggle={(airplayEnabled) => updateSettings({ airplayEnabled })}
+              onCastToggle={(castEnabled) => updateSettings({ castEnabled })}
               onRecheckFfmpeg={recheckFfmpeg}
               onShow={setActiveId}
               onStop={stop}

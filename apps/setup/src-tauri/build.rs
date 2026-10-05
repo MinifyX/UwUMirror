@@ -89,15 +89,16 @@ fn archive(dir: &Path) -> Vec<u8> {
 }
 
 /// A folder as one compressed tar archive: the app's for macOS and Linux,
-/// FFmpeg's for Windows.
-fn pack_folder(variable: &str, name: &str, size_env: &str) {
+/// with the long window, FFmpeg's for Windows with the normal one (a megabyte
+/// gains nothing from it, and the setup unpacks it with zstd's defaults).
+fn pack_folder(variable: &str, name: &str, size_env: &str, long: bool) {
     println!("cargo:rerun-if-env-changed={variable}");
     let (payload, size) = match std::env::var_os(variable).filter(|path| !path.is_empty()) {
         Some(path) => {
             let dir = Path::new(&path);
             println!("cargo:rerun-if-changed={}", dir.display());
             let raw = archive(dir);
-            (compress(&raw, true), raw.len())
+            (compress(&raw, long), raw.len())
         }
         None => (Vec::new(), 0),
     };
@@ -111,6 +112,7 @@ fn main() {
             "UWUMIRROR_SETUP_PAYLOAD",
             "payload.zst",
             "UWUMIRROR_SETUP_PAYLOAD_SIZE",
+            true,
         );
     } else {
         pack_file(
@@ -127,6 +129,7 @@ fn main() {
             "UWUMIRROR_SETUP_FFMPEG",
             "ffmpeg.zst",
             "UWUMIRROR_SETUP_FFMPEG_SIZE",
+            false,
         );
     }
     // The setup usually runs from Downloads, next to whatever else was

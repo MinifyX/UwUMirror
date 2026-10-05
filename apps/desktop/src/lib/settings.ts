@@ -58,6 +58,8 @@ export type Settings = {
   /** Windows' Miracast receiver, borrowed while UwUMirror runs. */
   miracastEnabled: boolean;
   miracastAudio: boolean;
+  /** Other computers' UwUMirror may send their screen here (UwUCast). */
+  castEnabled: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -80,6 +82,7 @@ export const DEFAULT_SETTINGS: Settings = {
   adbPath: '',
   miracastEnabled: true,
   miracastAudio: true,
+  castEnabled: true,
 };
 
 const KEY = 'uwumirror.settings';
@@ -118,6 +121,7 @@ export function sanitize(raw: unknown): Settings {
     adbPath: text(input.adbPath, 1024),
     miracastEnabled: bool(input.miracastEnabled, d.miracastEnabled),
     miracastAudio: bool(input.miracastAudio, d.miracastAudio),
+    castEnabled: bool(input.castEnabled, d.castEnabled),
   };
 }
 

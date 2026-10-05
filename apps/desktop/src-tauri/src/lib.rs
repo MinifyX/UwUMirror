@@ -1,7 +1,9 @@
-//! UwUMirror's shell: starts the AirPlay receiver, the Android side and (on
-//! Windows) the Miracast receiver, hands their streams to the page (see
-//! `hub.rs`), and offers the page its commands.
+//! UwUMirror's shell: starts the AirPlay receiver, the Android side, the
+//! UwUCast receiver and (on Windows) the Miracast receiver, hands their
+//! streams to the page (see `hub.rs`), sends this screen elsewhere on Windows
+//! (see `cast.rs`), and offers the page its commands.
 
+mod cast;
 mod frames;
 mod hub;
 mod log;
@@ -73,6 +75,7 @@ struct AppState {
     android: Arc<Android>,
     pairing: Mutex<Option<AbortHandle>>,
     miracast: tokio::sync::Mutex<MiracastSide>,
+    cast: cast::Cast,
 }
 
 type Result<T> = std::result::Result<T, String>;
@@ -115,6 +118,8 @@ struct AppInfo {
     /// libavcodec's major version, when FFmpeg is on the system.
     ffmpeg: Option<u32>,
     scrcpy: &'static str,
+    /// This build can send its screen (Windows).
+    cast_send: bool,
 }
 
 #[tauri::command]
@@ -127,6 +132,7 @@ async fn app_info() -> AppInfo {
         version: env!("CARGO_PKG_VERSION"),
         ffmpeg,
         scrcpy: uwumirror_android::scrcpy::SERVER_VERSION,
+        cast_send: uwumirror_cast::CAN_SEND,
     }
 }
 
@@ -233,6 +239,9 @@ async fn stop_stream(state: &AppState, id: u64) -> bool {
         if miracast.pretend.as_ref().is_some_and(|p| p.end_stream(id)) {
             return true;
         }
+    }
+    if state.cast.end_stream(id).await {
+        return true;
     }
     state.android.stop(id)
 }
@@ -472,6 +481,7 @@ pub fn run() {
                 android,
                 pairing: Mutex::new(None),
                 miracast: tokio::sync::Mutex::new(MiracastSide::default()),
+                cast: cast::Cast::new(),
             });
             // A video file as a Miracast sender, for trying the way decoded
             // pictures take into the page without a phone.
@@ -514,6 +524,11 @@ pub fn run() {
             android_choose_adb,
             miracast_apply,
             frame_done,
+            cast::cast_apply,
+            cast::cast_receivers,
+            cast::cast_send,
+            cast::cast_send_status,
+            cast::cast_send_stop,
             open_link,
             log_detail,
             open_log_folder,
@@ -534,6 +549,7 @@ pub fn run() {
             let miracast =
                 std::mem::take(&mut *tauri::async_runtime::block_on(state.miracast.lock()));
             drop(miracast);
+            state.cast.shut_down();
         }
     });
 }

@@ -1,6 +1,6 @@
 # Architecture
 
-How UwUMirror is put together: the crates, the two protocols it speaks, how a
+How UwUMirror is put together: the crates, the protocols it speaks, how a
 picture gets from a phone onto the screen, and how all of it is tested.
 
 ## The pieces
@@ -10,6 +10,7 @@ picture gets from a phone onto the screen, and how all of it is tested.
 | `crates/uwumirror-core`     | `StreamEvent` (the model every source speaks), sound output with cpal, AirPlay audio decoding through the system's FFmpeg |
 | `crates/uwumirror-airplay`  | The AirPlay receiver: Bonjour, RTSP, pairing, FairPlay, the mirroring stream, RTP audio, NTP                              |
 | `crates/uwumirror-android`  | Finding and running `adb`, pairing over wireless debugging, scrcpy's server and protocol                                  |
+| `crates/uwumirror-cast`     | UwUCast between two UwUMirrors: mDNS, the receiver, and on Windows the sender (capture, Media Foundation, loopback sound) |
 | `crates/uwumirror-miracast` | Miracast through Windows' own receiver: the session, `MediaPlayer`'s frame server, NV12 read back (Windows only)          |
 | `apps/desktop/src-tauri`    | The shell: starts the receiver and the Android side, the hub, commands for the page                                       |
 | `apps/desktop/src`          | The page: React, the players, the start page, settings                                                                    |
@@ -28,6 +29,7 @@ binary messages on a Tauri channel for the video.
 iPhone ──TCP 7000── RTSP ─► session.rs ── SETUP ─► mirror.rs ──► StreamEvent::Video
         ──TCP n──── 128-byte headers + AES-CTR H.264 ─┘                │
 Android ── adb forward ── scrcpy video socket ──► scrcpy.rs ───────────┤
+Windows PC ──TCP 7100── UwUCast messages ──► cast/receiver.rs ─────────┤
                                                                        ▼
                                                           hub.rs: cache since last key frame
                                                                        │ Channel (binary)
@@ -176,6 +178,62 @@ never queued. Without shared buffers (an old WebView2) pictures take the
 channel, at most two unacknowledged at a time. Re-encoding to H.264 for the
 existing path was the alternative, and wasn't needed.
 
+## UwUCast (computer to computer)
+
+A Windows PC can't AirPlay, and Miracast needs Wi-Fi Direct and something
+different on every system, so two UwUMirrors speak a small protocol of their
+own (`crates/uwumirror-cast`). It carries exactly what the receiving side
+already plays: H.264 in Annex B, as from an iPhone or scrcpy, and raw PCM, as
+from Android. Nothing is decoded in Rust on either side.
+
+**Finding each other** (`discovery.rs`): a receiver announces
+`_uwumirror._tcp` on mDNS, IPv4 only, as `uwumirror-<random id>` — not by its
+name, so two computers called the same don't share a record. The TXT record
+says `name`, `version` (the app's), `proto` (UwUCast's version) and `id`; a
+sender lists every receiver but the one with its own id, and won't send to
+another protocol version.
+
+**The wire** (`protocol.rs`), one TCP connection per stream (port 7100, or any
+free one), big endian:
+
+1. Hello, sender → receiver: magic `UwUCast\0`, protocol version (2 bytes),
+   flags (bit 0: sound comes along), the sender's name and what it runs on
+   ("Windows 11"), each a length byte and UTF-8 (at most 120 bytes).
+2. Welcome, receiver → sender: the magic, its protocol version, a status
+   (0 go ahead, 1 another version, 2 not receiving), its name.
+3. Messages, each a type byte and a 4-byte length:
+
+   | type   | payload                                                           | limit  |
+   | ------ | ----------------------------------------------------------------- | ------ |
+   | 1      | video: flags (bit 0 key frame), PTS in µs (8 bytes), Annex B data | 16 MiB |
+   | 2      | picture size: width, height (4 bytes each, 1–16384)               | 8      |
+   | 3      | sound: PTS in µs, then s16le PCM, 48 kHz, stereo, whole frames    | 1 s    |
+   | 4      | end: the sender stops on purpose                                  | 0      |
+   | `0x81` | receiver → sender: a key frame, please                            | 0      |
+
+Lengths are checked before anything is allocated; an unknown type, a frame
+without a start code or half a stereo frame ends the connection. A stream ends
+cleanly with an end message or when the connection closes between two
+messages; with a reason on garbage, or after 15 s of silence. The receiver
+drops frames until the first key frame and asks for one (at most once a
+second). Ending the stream at the receiver closes the connection, which the
+sender reports as "ended by the receiver".
+
+**Sending** (Windows, `screen/`): Windows.Graphics.Capture records the primary
+screen with the pointer into a texture of our own (frames come only on
+change; the latest is kept). D3D11's video processor converts BGRA to NV12 and
+scales it into at most 1920 × 1080, proportions kept, on the card. Media
+Foundation's H.264 encoder takes it: the graphics card's (asynchronous,
+textures through a DXGI device manager, found for the capturing card by its
+LUID) at 60 frames a second, or Windows' own (synchronous, frames copied back
+to memory) at 30. Main profile, low latency, CBR at 10 Mbit/s, no B-frames, a
+key frame every two seconds and on request, SPS and PPS in front of every key
+frame. Colours are BT.709 where the encoder writes that into the stream (the
+cards' do), BT.601 with Windows' own, which writes nothing. Sound is WASAPI's
+loopback of the default output through cpal, resampled to 48 kHz stereo. The
+capture threads never wait for the network: a full queue (a third of a
+second) drops frames until the next key frame, which is asked for at once.
+
 ## Tests
 
 Everything that can be tested without a phone is:
@@ -201,12 +259,24 @@ Everything that can be tested without a phone is:
   `UWUMIRROR_FRAMES_VIA_CHANNEL=1` forces the channel, to compare. The
   `listen` example starts the real receiver and prints its state and what
   senders do.
+- **UwUCast against pretend senders** (`cast/tests/fake_sender.rs`): one that
+  speaks the protocol byte by byte (frames before the first key frame dropped
+  and a key frame asked for), the real sending half with made-up frames and
+  an end from the receiver, another protocol version, garbage.
+- **UwUCast for real, on Windows** (`cast/tests/send_screen.rs`, ignored by
+  default): records this screen, encodes with the graphics card's encoder and
+  with Windows' own, sends to a receiver in the same process and checks SPS,
+  PPS and IDR in the first frame, the key frame interval and the end; and the
+  loopback sound while a quiet tone plays. `UWUMIRROR_DUMP=folder` writes the
+  streams out for `ffmpeg`. mDNS between two announcements is another ignored
+  test (`discovery.rs`).
 - **Real decoding**: AAC made by the `ffmpeg` command, decoded through the
   runtime-loaded libavcodec (`core/tests/decode.rs`).
 - Units for RTSP parsing and limits, FairPlay rounds and mode checks, pairing,
   mirroring decryption across packets, AVCC to Annex B, audio decryption,
-  resampling, the hub's cache, the platform-tools unpacking, Miracast's
-  states, picture sizes and NV12 packing, the frame message.
+  resampling, the hub's cache, the platform-tools unpacking, UwUCast's
+  messages and limits, NAL units and parameter sets, fitting the picture,
+  Miracast's states, picture sizes and NV12 packing, the frame message.
 
 The checks CI runs (`.github/workflows/ci.yml`), and what to run before a push:
 

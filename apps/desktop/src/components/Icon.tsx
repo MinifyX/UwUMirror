@@ -8,6 +8,8 @@ const PATHS = {
   phone: 'M7.5 3.5h9v17h-9z M11 17.5h2',
   tablet: 'M5 3.5h14v17H5z M11 17.5h2',
   laptop: 'M5 6h14v9H5z M3 18.5h18',
+  monitor: 'M3.5 4.5h17v11h-17z M9 19.5h6 M12 15.5v4',
+  screenShare: 'M3.5 4.5h17v11h-17z M9 19.5h6 M12 15.5v4 M12 12.5V7.5 M9.5 10 12 7.5l2.5 2.5',
   android:
     'M7 10h10v8H7z M9 10a3 3 0 0 1 6 0 M9.5 7.5l-1-1.5 M14.5 7.5l1-1.5 M10 13h.01 M14 13h.01',
   cast: 'M3.5 9V5.5h17v13H14 M3.5 13a5.5 5.5 0 0 1 5.5 5.5 M3.5 16.5a2 2 0 0 1 2 2',

@@ -13,5 +13,8 @@
   "Schließen": "Close",
   "Start": "Home",
   "Start (Strg+0)": "Home (Ctrl+0)",
-  "AirPlay-Ton": "AirPlay audio"
+  "AirPlay-Ton": "AirPlay audio",
+  "Computer": "Computer",
+  "„{name}“ hat das Senden beendet.": "“{name}” ended the stream.",
+  "Senden abgebrochen: {error}": "Sending broke off: {error}"
 }

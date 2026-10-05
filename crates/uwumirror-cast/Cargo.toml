@@ -1,0 +1,51 @@
+[package]
+name = "uwumirror-cast"
+description = "UwUCast: one UwUMirror sending its screen to another"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+uwumirror-core.workspace = true
+
+mdns-sd.workspace = true
+parking_lot.workspace = true
+rand.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+# Sending is Windows only: the screen through Windows.Graphics.Capture, H.264
+# from Media Foundation's encoder (the graphics card's, or Windows' own), the
+# sound through WASAPI's loopback. No codec of our own, as with receiving.
+[target.'cfg(windows)'.dependencies]
+cpal = "0.15"
+windows = { version = "0.61", features = [
+  "Foundation",
+  "Foundation_Metadata",
+  "Graphics",
+  "Graphics_Capture",
+  "Graphics_DirectX",
+  "Graphics_DirectX_Direct3D11",
+  "Win32_Foundation",
+  "Win32_Graphics_Direct3D",
+  "Win32_Graphics_Direct3D11",
+  "Win32_Graphics_Dxgi",
+  "Win32_Graphics_Dxgi_Common",
+  "Win32_Graphics_Gdi",
+  "Win32_Media_MediaFoundation",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Ole",
+  "Win32_System_Registry",
+  "Win32_System_Variant",
+  "Win32_System_WinRT",
+  "Win32_System_WinRT_Direct3D11",
+  "Win32_System_WinRT_Graphics_Capture",
+] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

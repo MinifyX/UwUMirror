@@ -4,6 +4,7 @@ members = [
   "crates/uwumirror-core",
   "crates/uwumirror-airplay",
   "crates/uwumirror-android",
+  "crates/uwumirror-cast",
   "crates/uwumirror-miracast",
   "apps/desktop/src-tauri",
   "apps/setup/src-tauri",
@@ -20,6 +21,7 @@ rust-version = "1.89"
 uwumirror-core = { path = "crates/uwumirror-core" }
 uwumirror-airplay = { path = "crates/uwumirror-airplay" }
 uwumirror-android = { path = "crates/uwumirror-android" }
+uwumirror-cast = { path = "crates/uwumirror-cast" }
 uwumirror-miracast = { path = "crates/uwumirror-miracast" }
 
 anyhow = "1"
