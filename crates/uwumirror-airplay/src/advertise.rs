@@ -39,7 +39,7 @@ pub fn airplay_txt(identity: &Identity) -> Vec<(&'static str, String)> {
         ("deviceid", identity.device_id_string()),
         ("features", FEATURES_TXT.into()),
         ("pw", "false".into()),
-        ("flags", "0x4".into()),
+        ("flags", "0x84".into()),
         ("model", MODEL.into()),
         ("pk", hex(&identity.public_key())),
         ("pi", PI.into()),

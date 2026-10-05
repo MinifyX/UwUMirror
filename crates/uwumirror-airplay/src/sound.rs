@@ -179,6 +179,24 @@ pub async fn run(data: UdpSocket, control: UdpSocket, params: SoundParams) {
         let payload = &mut packet[12..];
         decrypt(&params.key, &params.iv, payload);
         let samples = decoder.decode(payload);
+        // The first few packets as they are after decrypting, and what the
+        // decoder said: an AAC-ELD frame starts with 0x8c to 0x8e, so this
+        // tells a wrong key from a decoder that doesn't take it.
+        if stats.packets < 3 {
+            let head: String = payload
+                .iter()
+                .take(16)
+                .map(|b| format!("{b:02x}"))
+                .collect();
+            tracing::info!(
+                id = params.id,
+                len = payload.len(),
+                %head,
+                samples = samples.len(),
+                ffmpeg_error = ?decoder.last_error,
+                "AirPlay sound packet"
+            );
+        }
         stats.packets += 1;
         if samples.is_empty() {
             stats.empty += 1;

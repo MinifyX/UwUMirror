@@ -332,7 +332,17 @@ impl Playback {
                     .map(|message| message.to_string())
                     .filter(|message| !message.is_empty())
                     .unwrap_or_else(|| "the picture couldn't be played".into());
-                tracing::warn!(%reason, id, "Miracast: playback failed");
+                // What Windows says beyond the message, which is often empty:
+                // which kind of failure, and the HRESULT behind it.
+                let error = args
+                    .as_ref()
+                    .and_then(|args| args.Error().ok())
+                    .map(|e| e.0);
+                let code = args
+                    .as_ref()
+                    .and_then(|args| args.ExtendedErrorCode().ok())
+                    .map(|code| format!("{:#010x}", code.0 as u32));
+                tracing::warn!(%reason, ?error, ?code, id, "Miracast: playback failed");
                 on_end(Some(reason));
                 Ok(())
             }

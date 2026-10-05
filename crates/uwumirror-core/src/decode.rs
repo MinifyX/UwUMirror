@@ -15,9 +15,12 @@
 //! Only a handful of functions and the leading fields of three structs are
 //! used — `AVPacket`'s, `AVFrame`'s and `AVCodecParameters`' — which have
 //! kept their layout since FFmpeg 4 (libavcodec 58) up to FFmpeg 9
-//! (libavcodec 63). Everything else is set through the functions.
+//! (libavcodec 63). Everything else is set through the functions — sample
+//! rate and channel layout too, through FFmpeg's options: FFmpeg 7 and newer
+//! throw away every frame without them ("An invalid frame was output by a
+//! decoder"), and AAC-ELD's decoder doesn't fill them in from the config.
 
-use std::ffi::{c_int, c_void};
+use std::ffi::{c_char, c_int, c_void};
 use std::ptr;
 use std::sync::Arc;
 
@@ -129,6 +132,8 @@ type ReceiveFrame = unsafe extern "C" fn(*mut c_void, *mut AvFrameHead) -> c_int
 type FrameAlloc = unsafe extern "C" fn() -> *mut AvFrameHead;
 type FrameFree = unsafe extern "C" fn(*mut *mut AvFrameHead);
 type Malloc = unsafe extern "C" fn(usize) -> *mut c_void;
+type OptSet = unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char, c_int) -> c_int;
+type OptSetInt = unsafe extern "C" fn(*mut c_void, *const c_char, i64, c_int) -> c_int;
 
 struct Api {
     find_decoder: FindDecoder,
@@ -145,6 +150,8 @@ struct Api {
     frame_alloc: FrameAlloc,
     frame_free: FrameFree,
     malloc: Malloc,
+    opt_set: OptSet,
+    opt_set_int: OptSetInt,
     /// Keeps the libraries loaded for as long as the pointers above are used.
     _libraries: (Library, Library),
     /// Which libavcodec this is, for the log and the settings page.
@@ -264,7 +271,7 @@ fn load(candidate: &str) -> Option<Library> {
 fn open(name: &str, major: u32) -> Option<Library> {
     candidates(name, major).into_iter().find_map(|candidate| {
         let library = load(&candidate)?;
-        tracing::debug!(%candidate, "FFmpeg library");
+        tracing::info!(%candidate, "FFmpeg library");
         Some(library)
     })
 }
@@ -303,6 +310,8 @@ impl Api {
                     frame_alloc: sym!(avutil, b"av_frame_alloc\0"),
                     frame_free: sym!(avutil, b"av_frame_free\0"),
                     malloc: sym!(avutil, b"av_mallocz\0"),
+                    opt_set: sym!(avutil, b"av_opt_set\0"),
+                    opt_set_int: sym!(avutil, b"av_opt_set_int\0"),
                     _libraries: (avcodec, avutil),
                     version: avcodec_major,
                 }
@@ -349,6 +358,8 @@ pub struct AudioDecoder {
     packet: *mut AvPacketHead,
     frame: *mut AvFrameHead,
     channels: usize,
+    /// FFmpeg's answer to the last packet it refused, for the log.
+    pub last_error: Option<c_int>,
 }
 
 // SAFETY: the FFmpeg objects belong to this decoder alone and are only used
@@ -357,6 +368,19 @@ unsafe impl Send for AudioDecoder {}
 
 impl AudioDecoder {
     pub fn new(codec: AudioCodec) -> Result<Self, DecodeError> {
+        // Everything AirPlay sends is 44.1 kHz stereo.
+        Self::with_config(codec, codec.extradata(), 44_100, 2)
+    }
+
+    /// With another configuration than AirPlay's (an AudioSpecificConfig for
+    /// AAC, the 'alac' atom for ALAC, and the rate and channels it says): for
+    /// checking the decoder against recorded streams.
+    pub fn with_config(
+        codec: AudioCodec,
+        extra: &[u8],
+        sample_rate: u32,
+        channels: u32,
+    ) -> Result<Self, DecodeError> {
         let api = api().ok_or(DecodeError::NoFfmpeg)?;
         // SAFETY: plain FFmpeg setup; every pointer is checked before use and
         // freed on the error paths (the context in `Drop`).
@@ -373,7 +397,8 @@ impl AudioDecoder {
                 context,
                 packet,
                 frame,
-                channels: 2,
+                channels: channels.max(1) as usize,
+                last_error: None,
             };
             if context.is_null() || packet.is_null() || frame.is_null() {
                 return Err(DecodeError::Open(codec, -12));
@@ -382,7 +407,6 @@ impl AudioDecoder {
             if parameters.is_null() {
                 return Err(DecodeError::Open(codec, -12));
             }
-            let extra = codec.extradata();
             // FFmpeg reads a little past the end of extradata; it wants 64
             // zeroed bytes of padding, and frees the buffer with its own free.
             let buffer = (api.malloc)(extra.len() + 64) as *mut u8;
@@ -400,6 +424,21 @@ impl AudioDecoder {
             if copied < 0 {
                 return Err(DecodeError::Open(codec, copied));
             }
+            // Options a version doesn't know are refused, and that's fine:
+            // "ch_layout" exists since FFmpeg 5.1, "ac" until FFmpeg 7.
+            let layout: &[u8] = if channels == 1 {
+                b"mono\0"
+            } else {
+                b"stereo\0"
+            };
+            (api.opt_set_int)(context, c"ar".as_ptr(), i64::from(sample_rate), 0);
+            (api.opt_set)(
+                context,
+                c"ch_layout".as_ptr(),
+                layout.as_ptr() as *const c_char,
+                0,
+            );
+            (api.opt_set_int)(context, c"ac".as_ptr(), i64::from(channels), 0);
             let opened = (api.open2)(context, decoder, ptr::null_mut());
             if opened < 0 {
                 (api.free_context)(&mut context);
@@ -428,9 +467,17 @@ impl AudioDecoder {
             (*self.packet).data = ptr::null_mut();
             (*self.packet).size = 0;
             if sent < 0 && !is_again(sent) {
+                self.last_error = Some(sent);
                 return out;
             }
-            while (self.api.receive_frame)(self.context, self.frame) >= 0 {
+            loop {
+                let received = (self.api.receive_frame)(self.context, self.frame);
+                if received < 0 {
+                    if !is_again(received) {
+                        self.last_error = Some(received);
+                    }
+                    break;
+                }
                 self.read_frame(&mut out);
             }
         }
@@ -450,7 +497,11 @@ impl AudioDecoder {
         match frame.format {
             FMT_FLTP | FMT_S16P | FMT_S32P => {
                 let left = plane(0);
-                let right = if plane(1).is_null() { left } else { plane(1) };
+                let right = if channels < 2 || plane(1).is_null() {
+                    left
+                } else {
+                    plane(1)
+                };
                 for i in 0..samples {
                     for p in [left, right] {
                         out.push(match frame.format {
