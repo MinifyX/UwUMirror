@@ -59,11 +59,15 @@ rm -f "$out"/*.dll "$out"/*.dylib
 
 case "$platform" in
   windows-x64 | windows-arm64)
-    # FFmpeg's own threads on Windows' API, and (with GCC) libgcc linked in:
-    # the DLLs need nothing but what every Windows has. ARM is built by clang,
-    # which links its runtime in by itself.
-    extra=()
-    if [ "$platform" = windows-x64 ]; then extra=(--extra-ldflags=-static-libgcc); fi
+    # FFmpeg's own threads on Windows' API, and (with GCC) libgcc and
+    # MinGW's winpthread, which GCC's runtime wants anyway, linked in: the
+    # DLLs need nothing but what every Windows has. ARM is built by clang
+    # (MSYS2 has no GCC for it), which links its runtime in by itself.
+    if [ "$platform" = windows-x64 ]; then
+      extra=(--extra-ldflags=-static-libgcc "--extra-libs=-Wl,-Bstatic -lwinpthread -Wl,-Bdynamic")
+    else
+      extra=(--cc=clang --arch=aarch64)
+    fi
     build "$platform" --target-os=mingw32 --enable-w32threads --disable-pthreads "${extra[@]}"
     cp "$work/$platform"/bin/avcodec-*.dll "$work/$platform"/bin/avutil-*.dll "$out/"
     # Fail here rather than on someone's computer: only system DLLs.
