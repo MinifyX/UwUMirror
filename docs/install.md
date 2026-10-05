@@ -67,20 +67,41 @@ Edge: `…` → **Keep** → **Show more** → **Keep anyway**).
 
 - **Install** sets everything up in a few seconds.
 - **Options** lets you change the folder (default
-  `%LOCALAPPDATA%\Programs\UwUMirror`) or turn off the desktop shortcut.
+  `%LOCALAPPDATA%\Programs\UwUMirror`), turn off the desktop shortcut, or turn
+  off **Set up the firewall for Miracast**.
 - If Microsoft Edge WebView2 is missing (Windows 11 always has it), the setup
   offers to download and install it.
 
-**The firewall.** The first time UwUMirror starts, Windows asks whether it may
-communicate on networks. Tick **Private networks** (that is enough, and
-"Public" is not needed) and click **Allow**. Your home network has to be set
-to _Private_ for this to count: **Settings → Network & internet → Wi-Fi (or
-Ethernet) → your network → Network profile type → Private network**. Clicked
-it away? **Windows Security → Firewall & network protection → Allow an app
-through firewall → Change settings**, then tick **Private** next to UwUMirror.
+**The firewall.** UwUMirror installs without administrator rights, except for
+this one thing: after the files are in place, the setup asks once (a UAC
+prompt, "Windows PowerShell" by Microsoft) and adds two inbound rules for
+`UwUMirror.exe`, in the group **UwUMirror**:
 
-Uninstall from **Windows Settings → Apps → Installed apps → UwUMirror**. The
-firewall entry Windows made stays in that list until you remove it there.
+| Rule                     | Networks | What                            | Why                                                                       |
+| ------------------------ | -------- | ------------------------------- | ------------------------------------------------------------------------- |
+| **UwUMirror**            | Private  | everything                      | AirPlay (TCP 7000, sound and timing over UDP), UwUCast (TCP 7100), mDNS   |
+| **UwUMirror (Miracast)** | Public   | UDP, from the local subnet only | Miracast's picture: Wi-Fi Direct counts as a _public_ network for Windows |
+
+Without the second rule a Miracast phone connects, but no picture arrives
+(Windows' player gives up with error 0xC00D4278). The prompt Windows itself
+shows on UwUMirror's first start only ever opens private networks, and
+allowing public networks there would open UwUMirror to every café's Wi-Fi —
+the Miracast rule doesn't: it lets in only UDP, and only from the network
+right next to the PC.
+
+Said no, or unticked the option? **UwUMirror → Settings → Miracast →
+Firewall → Set up** does the same, with the same one prompt; a Miracast stream
+that waits for its picture also offers the button. Without these rules, the
+first start asks as before: tick **Private networks** and click **Allow**.
+Either way your home network has to be set to _Private_: **Settings → Network
+& internet → Wi-Fi (or Ethernet) → your network → Network profile type →
+Private network**.
+
+Uninstall from **Windows Settings → Apps → Installed apps → UwUMirror**. If
+there are firewall rules for UwUMirror, the uninstaller asks once more and
+removes them — its own and the ones Windows made on the first start. Said no?
+They're in **Windows Security → Firewall & network protection → Advanced
+settings → Inbound Rules** (group UwUMirror, and `uwumirror.exe`).
 
 ## macOS
 
@@ -336,23 +357,42 @@ anzeigen** → **Trotzdem beibehalten**).
 
 - **Installieren** richtet alles in ein paar Sekunden ein.
 - Unter **Optionen** änderst du den Ordner (Standard
-  `%LOCALAPPDATA%\Programs\UwUMirror`) oder schaltest die Desktop-Verknüpfung
-  ab.
+  `%LOCALAPPDATA%\Programs\UwUMirror`), schaltest die Desktop-Verknüpfung ab
+  oder **Firewall für Miracast einrichten**.
 - Fehlt Microsoft Edge WebView2 (Windows 11 hat es immer), bietet das Setup an,
   es herunterzuladen und zu installieren.
 
-**Die Firewall.** Beim ersten Start fragt Windows, ob UwUMirror in Netzwerken
-kommunizieren darf. Hak **Private Netzwerke** an (das reicht, „Öffentlich“
-braucht es nicht) und klick auf **Zugriff zulassen**. Dein Heimnetz muss dafür
-als _Privat_ eingestellt sein: **Einstellungen → Netzwerk und Internet → WLAN
-(oder Ethernet) → dein Netzwerk → Netzwerkprofiltyp → Privates Netzwerk**.
-Weggeklickt? **Windows-Sicherheit → Firewall & Netzwerkschutz → Zugriff von
-App durch Firewall zulassen → Einstellungen ändern**, dann bei UwUMirror
-**Privat** anhaken.
+**Die Firewall.** UwUMirror installiert sich ohne Administratorrechte, bis auf
+diese eine Sache: Wenn die Dateien da sind, fragt das Setup einmal nach (eine
+Benutzerkontensteuerung, „Windows PowerShell“ von Microsoft) und legt zwei
+eingehende Regeln für `UwUMirror.exe` an, in der Gruppe **UwUMirror**:
+
+| Regel                    | Netzwerke  | Was                              | Wozu                                                                        |
+| ------------------------ | ---------- | -------------------------------- | --------------------------------------------------------------------------- |
+| **UwUMirror**            | Privat     | alles                            | AirPlay (TCP 7000, Ton und Takt über UDP), UwUCast (TCP 7100), mDNS         |
+| **UwUMirror (Miracast)** | Öffentlich | UDP, nur aus dem lokalen Subnetz | Das Bild von Miracast: Wi-Fi Direct ist für Windows ein _öffentliches_ Netz |
+
+Ohne die zweite Regel verbindet sich ein Miracast-Handy, aber es kommt kein
+Bild an (Windows' Player gibt mit Fehler 0xC00D4278 auf). Die Abfrage, die
+Windows selbst beim ersten Start zeigt, öffnet nur private Netzwerke – und
+öffentliche dort zu erlauben, würde UwUMirror für jedes Café-WLAN öffnen. Die
+Miracast-Regel tut das nicht: Sie lässt nur UDP herein, und nur aus dem Netz
+direkt am PC.
+
+Abgelehnt oder die Option abgewählt? **UwUMirror → Einstellungen → Miracast →
+Firewall → Einrichten** macht dasselbe, mit derselben einen Abfrage; ein
+Miracast-Stream, der auf sein Bild wartet, bietet den Knopf auch an. Ohne
+diese Regeln fragt Windows beim ersten Start wie gehabt: **Private Netzwerke**
+anhaken und **Zugriff zulassen**. So oder so muss dein Heimnetz als _Privat_
+eingestellt sein: **Einstellungen → Netzwerk und Internet → WLAN (oder
+Ethernet) → dein Netzwerk → Netzwerkprofiltyp → Privates Netzwerk**.
 
 Deinstallieren über **Windows-Einstellungen → Apps → Installierte Apps →
-UwUMirror**. Der Firewall-Eintrag, den Windows angelegt hat, bleibt in der
-Liste oben, bis du ihn dort entfernst.
+UwUMirror**. Gibt es Firewall-Regeln für UwUMirror, fragt der Deinstaller noch
+einmal und entfernt sie – seine eigenen und die, die Windows beim ersten Start
+angelegt hat. Abgelehnt? Sie stehen unter **Windows-Sicherheit → Firewall &
+Netzwerkschutz → Erweiterte Einstellungen → Eingehende Regeln** (Gruppe
+UwUMirror, und `uwumirror.exe`).
 
 ## macOS
 
