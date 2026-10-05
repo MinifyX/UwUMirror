@@ -12,6 +12,7 @@
   "Nur Ton, kein Bild. Lautstärke und Titel steuerst du am Gerät.": "Sound only, no picture. Volume and tracks are controlled on the device.",
   "Warte auf das erste Bild…": "Waiting for the first picture…",
   "Das dauert meist nur einen Moment.": "That usually takes only a moment.",
+  "Gib diese PIN auf dem Gerät ein:": "Enter this PIN on the device:",
   "Dieses System kann das Video nicht anzeigen": "This system can't show the video",
   "Für H.264 braucht die WebView GStreamers Plugins: Pakete gstreamer1.0-libav und gstreamer1.0-plugins-good (Arch: gst-libav, gst-plugins-good).": "For H.264 the webview needs GStreamer's plugins: the packages gstreamer1.0-libav and gstreamer1.0-plugins-good (Arch: gst-libav, gst-plugins-good).",
   "Der Video-Decoder des Systems hat das Bild abgelehnt.": "The system's video decoder refused the picture.",

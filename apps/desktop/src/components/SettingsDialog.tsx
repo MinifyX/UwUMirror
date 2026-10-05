@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, errorText, type AdbStatus, type AppInfo } from '../lib/api';
 import { N_, t, useLanguage } from '../lib/i18n';
+import { platform } from '../lib/platform';
 import { receiverName, updateSettings, useSettings, type Settings } from '../lib/settings';
 import { Modal } from './Modal';
 import { Nyu } from './nyu/Nyu';
@@ -321,6 +322,20 @@ function Android({ settings }: { settings: Settings }) {
           label={t('Ton')}
         />
       </Row>
+      {platform() === 'windows' && (
+        <Row
+          label={t('Ton über Miracast')}
+          description={t(
+            'Spielt den Ton von Geräten, die über Miracast spiegeln, hier ab. Größe und Bitrate wählt bei Miracast das Gerät selbst.',
+          )}
+        >
+          <Toggle
+            checked={settings.miracastAudio}
+            onChange={(miracastAudio) => updateSettings({ miracastAudio })}
+            label={t('Ton über Miracast')}
+          />
+        </Row>
+      )}
       <Row
         label="adb"
         description={

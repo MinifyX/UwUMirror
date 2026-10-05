@@ -2,6 +2,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, errorText, type AirplayStatus, type AppInfo, type Device } from './lib/api';
 import { t, useLanguage } from './lib/i18n';
+import { applyMiracast } from './lib/miracast';
 import {
   getSettings,
   RESOLUTIONS,
@@ -124,6 +125,11 @@ export function App() {
     settings.airplayFps,
     settings.airplayAudio,
   ]);
+
+  // The Miracast receiver (Windows) follows the settings, too.
+  useEffect(() => {
+    void applyMiracast();
+  }, [settings.miracastEnabled, settings.miracastAudio]);
 
   // A stream that is gone falls back to the start page.
   useEffect(() => {

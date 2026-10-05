@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { AudioStatus } from '../lib/api';
 import { streamIcon, streamSource } from '../lib/devices';
 import { t, useLanguage } from '../lib/i18n';
+import { useMiracast } from '../lib/miracast';
 import { platform } from '../lib/platform';
 import type { PlayerInfo } from '../lib/player';
 import type { Stream } from '../lib/streams';
@@ -17,7 +18,13 @@ type Props = {
   onHome: () => void;
 };
 
-const BACKENDS = { webcodecs: 'WebCodecs', mediasource: 'Media Source', none: '–' } as const;
+const BACKENDS = {
+  webcodecs: 'WebCodecs',
+  mediasource: 'Media Source',
+  // Miracast: Windows decodes, the page only draws.
+  frames: 'Windows Media Foundation',
+  none: '–',
+} as const;
 
 function audioLabel(status: AudioStatus | null): string | null {
   switch (status) {
@@ -68,6 +75,9 @@ export function StreamView({ stream, fullscreen, onToggleFullscreen, onStop, onH
   const width = info.width || stream.width;
   const height = info.height || stream.height;
   const audio = audioLabel(stream.audio);
+  // A Miracast sender may ask for a PIN before it sends its picture.
+  const miracast = useMiracast();
+  const pin = stream.kind === 'miracast' ? miracast?.pin : null;
 
   const bar = (
     <>
@@ -135,8 +145,17 @@ export function StreamView({ stream, fullscreen, onToggleFullscreen, onStop, onH
         {waiting && (
           <div className="stage-message">
             <NyuScene name="connecting" className="stage-scene" />
-            <p className="stage-title">{t('Warte auf das erste Bild…')}</p>
-            <p>{t('Das dauert meist nur einen Moment.')}</p>
+            {pin ? (
+              <>
+                <p className="stage-title">{t('Gib diese PIN auf dem Gerät ein:')}</p>
+                <p className="stage-pin">{pin}</p>
+              </>
+            ) : (
+              <>
+                <p className="stage-title">{t('Warte auf das erste Bild…')}</p>
+                <p>{t('Das dauert meist nur einen Moment.')}</p>
+              </>
+            )}
           </div>
         )}
         {info.error && (

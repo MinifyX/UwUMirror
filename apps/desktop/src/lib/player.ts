@@ -8,16 +8,21 @@
  * played through Media Source in a <video> element, kept close to the live
  * edge.
  *
+ * Miracast's pictures come decoded already (Windows decodes them): those go
+ * onto the same canvas as WebCodecs `VideoFrame`s made straight from their
+ * bytes.
+ *
  * A player lives as long as its stream, outside React: its element moves
  * into whichever view shows the stream, and a tab switch never costs a
  * decoder restart.
  */
 
+import type { RawFrame } from './api';
 import { codecString, parameterSets, splitNals, spsSize, type Nal } from './h264';
 import { avcConfig, initSegment, mediaSegment, sample, TIMESCALE } from './mp4';
 import { getSettings } from './settings';
 
-export type PlayerBackend = 'webcodecs' | 'mediasource' | 'none';
+export type PlayerBackend = 'webcodecs' | 'mediasource' | 'frames' | 'none';
 
 export type PlayerInfo = {
   backend: PlayerBackend;
@@ -278,6 +283,48 @@ class MediaSourceBackend implements Backend {
   }
 }
 
+/**
+ * Decoded NV12 pictures onto a canvas. `VideoFrame` copies the bytes when it
+ * is made, so the picture's memory goes back to Rust right away; drawing it
+ * converts to RGB on the graphics card.
+ */
+class FramesBackend {
+  private readonly context: CanvasRenderingContext2D | null;
+
+  constructor(
+    private readonly canvas: HTMLCanvasElement,
+    private readonly onFrame: (width: number, height: number) => void,
+    private readonly onFail: (reason: string) => void,
+  ) {
+    this.context = canvas.getContext('2d', { alpha: false, desynchronized: true });
+  }
+
+  draw(raw: RawFrame) {
+    let frame: VideoFrame;
+    try {
+      frame = new VideoFrame(raw.data, {
+        format: 'NV12',
+        codedWidth: raw.width,
+        codedHeight: raw.height,
+        timestamp: raw.pts,
+      });
+    } catch (error) {
+      this.onFail(String(error));
+      return;
+    } finally {
+      raw.done();
+    }
+    const { width, height } = raw;
+    if (this.canvas.width !== width || this.canvas.height !== height) {
+      this.canvas.width = width;
+      this.canvas.height = height;
+    }
+    this.context?.drawImage(frame, 0, 0, width, height);
+    frame.close();
+    this.onFrame(width, height);
+  }
+}
+
 function webCodecsAvailable(): boolean {
   return (
     typeof window.VideoDecoder === 'function' && typeof window.EncodedVideoChunk === 'function'
@@ -292,6 +339,9 @@ export class StreamPlayer {
   /** Goes into whichever view shows the stream. */
   readonly element: HTMLDivElement;
   private backend: Backend | null = null;
+  /** Set once the stream sends decoded pictures instead of H.264. */
+  private frames: FramesBackend | null = null;
+  private framesFailed = false;
   private info: PlayerInfo = { backend: 'none', width: 0, height: 0, frames: 0, error: null };
   private readonly listeners = new Set<(info: PlayerInfo) => void>();
   private size = { width: 0, height: 0 };
@@ -367,6 +417,32 @@ export class StreamPlayer {
     this.backend.push(key, pts, data, splitNals(data));
   }
 
+  /** A decoded picture: the H.264 decoder isn't needed for this stream. */
+  pushFrame(raw: RawFrame) {
+    if (!this.frames) {
+      if (this.framesFailed || typeof window.VideoFrame !== 'function') {
+        raw.done();
+        if (!this.framesFailed) {
+          this.framesFailed = true;
+          this.set({ backend: 'none', error: 'no-decoder' });
+        }
+        return;
+      }
+      this.backend?.close();
+      this.backend = null;
+      const canvas = document.createElement('canvas');
+      this.element.replaceChildren(canvas);
+      this.frames = new FramesBackend(canvas, this.frame, (reason) => {
+        console.warn('VideoFrame refused the picture:', reason);
+        this.frames = null;
+        this.framesFailed = true;
+        this.set({ backend: 'none', error: 'no-decoder' });
+      });
+      this.set({ backend: 'frames' });
+    }
+    this.frames.draw(raw);
+  }
+
   subscribe(listener: (info: PlayerInfo) => void): () => void {
     this.listeners.add(listener);
     listener(this.info);
@@ -380,6 +456,7 @@ export class StreamPlayer {
   close() {
     this.backend?.close();
     this.backend = null;
+    this.frames = null;
     this.listeners.clear();
     this.element.remove();
   }

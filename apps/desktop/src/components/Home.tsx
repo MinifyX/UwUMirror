@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, errorText, type AdbStatus, type AirplayStatus, type Device } from '../lib/api';
 import { streamIcon, streamSource } from '../lib/devices';
 import { t, useLanguage } from '../lib/i18n';
-import { useSettings } from '../lib/settings';
+import { useMiracast } from '../lib/miracast';
+import { updateSettings, useSettings } from '../lib/settings';
 import type { Stream } from '../lib/streams';
 import { AirplayCard } from './AirplayCard';
 import { AndroidCard } from './AndroidCard';
@@ -29,6 +30,7 @@ const DEVICE_POLL_MS = 3000;
 export function Home(props: Props) {
   useLanguage();
   const settings = useSettings();
+  const miracast = useMiracast();
   const [adb, setAdb] = useState<AdbStatus | null>(null);
   const [devices, setDevices] = useState<Device[]>([]);
   const [deviceError, setDeviceError] = useState<string | null>(null);
@@ -112,6 +114,9 @@ export function Home(props: Props) {
           onRecheckFfmpeg={props.onRecheckFfmpeg}
         />
         <AndroidCard
+          miracast={miracast}
+          miracastEnabled={settings.miracastEnabled}
+          onMiracastToggle={(miracastEnabled) => updateSettings({ miracastEnabled })}
           adb={adb}
           devices={devices}
           error={deviceError}

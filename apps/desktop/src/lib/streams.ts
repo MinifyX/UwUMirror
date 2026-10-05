@@ -76,12 +76,18 @@ export async function startStreams() {
   started = true;
   await onStreamMessage(handle);
   for (const state of await api.streams()) upsert(state);
-  await subscribeVideo((packet) => {
-    // Video for a stream that already ended is dropped; for one whose start
-    // is still on its way, the player is made now.
-    if (ended.has(packet.id)) return;
-    playerFor(packet.id).push(packet.key, packet.pts, packet.data);
-  });
+  await subscribeVideo(
+    (packet) => {
+      // Video for a stream that already ended is dropped; for one whose start
+      // is still on its way, the player is made now.
+      if (ended.has(packet.id)) return;
+      playerFor(packet.id).push(packet.key, packet.pts, packet.data);
+    },
+    (frame) => {
+      if (ended.has(frame.id)) frame.done();
+      else playerFor(frame.id).pushFrame(frame);
+    },
+  );
 }
 
 export function onStreamStarted(listener: (stream: Stream) => void): () => void {

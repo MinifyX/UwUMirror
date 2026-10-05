@@ -239,6 +239,22 @@
   margin-top: 10px;
 }
 
+/* Wireless debugging, folded away under Miracast on Windows. */
+.how-to .advanced {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+/* A Miracast PIN to type on the sender. */
+.hint .pin {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  font-variant-numeric: tabular-nums;
+}
+
 .running {
   display: grid;
   gap: 8px;

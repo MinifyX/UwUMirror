@@ -106,6 +106,14 @@
   color: #f8f2f6;
 }
 
+.stage-pin {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  font-variant-numeric: tabular-nums;
+  color: #f8f2f6;
+}
+
 .stage-paused {
   position: absolute;
   left: 50%;

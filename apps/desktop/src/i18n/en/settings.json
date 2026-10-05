@@ -31,6 +31,8 @@
   "Bitrate": "Bit rate",
   "Mehr sieht schärfer aus und braucht mehr WLAN.": "More looks sharper and needs more Wi-Fi.",
   "Ab Android 11. Der Ton spielt dann hier statt auf dem Handy.": "Android 11 and newer. The sound then plays here instead of on the phone.",
+  "Ton über Miracast": "Sound over Miracast",
+  "Spielt den Ton von Geräten, die über Miracast spiegeln, hier ab. Größe und Bitrate wählt bei Miracast das Gerät selbst.": "Plays the sound of devices mirroring over Miracast here. With Miracast, the device picks size and bit rate itself.",
   "{path} ({version})": "{path} ({version})",
   "Nicht gefunden.": "Not found.",
   "Googles Platform-Tools sind da.": "Google's Platform Tools are in place.",

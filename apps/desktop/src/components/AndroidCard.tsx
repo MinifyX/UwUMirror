@@ -1,11 +1,16 @@
-import { useState } from 'react';
-import { api, errorText, type AdbStatus, type Device } from '../lib/api';
+import { useEffect, useState } from 'react';
+import { api, errorText, type AdbStatus, type Device, type MiracastStatus } from '../lib/api';
 import { t, useLanguage } from '../lib/i18n';
 import { platform } from '../lib/platform';
 import type { Stream } from '../lib/streams';
 import { Icon } from './Icon';
+import { Toggle } from './Toggle';
 
 type Props = {
+  /** The Miracast receiver; null while unknown. */
+  miracast: MiracastStatus | null;
+  miracastEnabled: boolean;
+  onMiracastToggle: (on: boolean) => void;
   adb: AdbStatus | null;
   devices: Device[];
   /** Why the device list couldn't be read, if it couldn't. */
@@ -29,8 +34,62 @@ function adbPackageHint(): string {
     : t('Installiere Googles Android Platform-Tools und suche erneut.');
 }
 
-/** Android phones adb knows, and how to add one. */
+/** The status line's dot: mint when phones can come, pink while starting. */
+function miracastTone(status: MiracastStatus | null, enabled: boolean): string {
+  if (!enabled) return 'off';
+  switch (status?.state) {
+    case undefined:
+    case 'starting':
+      return 'starting';
+    case 'listening':
+    case 'connected':
+      return 'online';
+    case 'off':
+      return 'off';
+    default:
+      return 'error';
+  }
+}
+
+function miracastText(status: MiracastStatus | null, enabled: boolean): string {
+  if (!enabled) return t('Aus – Handys und PCs sehen UwUMirror gerade nicht.');
+  const name = status?.name || t('dieser Computer');
+  switch (status?.state) {
+    case 'listening':
+      return t('Empfangsbereit als „{name}“', { name });
+    case 'connected':
+      return t('Verbunden – ein Gerät spiegelt über Miracast.');
+    case 'noWifiDirect':
+      return t(
+        'Dieser Computer kann kein Miracast: Sein WLAN-Adapter (oder dessen Treiber) kann kein Wi-Fi Direct.',
+      );
+    case 'wifiOff':
+      return t(
+        'WLAN ist aus. Miracast braucht WLAN an diesem Computer – mit einem Netz verbunden sein muss er nicht.',
+      );
+    case 'disabledByPolicy':
+      return t('Eine Richtlinie verbietet das Projizieren auf diesen PC.');
+    case 'busy':
+      return t(
+        'Windows gibt den Empfang gerade nicht her – projiziert dieser PC selbst auf einen anderen Bildschirm?',
+      );
+    case 'failed':
+      return t('Miracast konnte nicht starten: {error}', { error: status.error ?? '?' });
+    default:
+      return t('Startet…');
+  }
+}
+
+/**
+ * Android phones (and Windows PCs): Miracast first, where Windows lends its
+ * receiver — most phones can cast without any setup. Wireless debugging
+ * stays as the advanced way, for Pixels and the like, and the only one on
+ * macOS and Linux.
+ */
 export function AndroidCard({
+  miracast,
+  miracastEnabled,
+  onMiracastToggle,
   adb,
   devices,
   error,
@@ -44,6 +103,15 @@ export function AndroidCard({
   const [starting, setStarting] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  // On Windows the card is Miracast's while its state is still unknown, too.
+  const hasMiracast = platform() === 'windows' && miracast?.state !== 'unsupported';
+  // Phones paired before stay in sight: the advanced part opens by itself
+  // once there are some.
+  const [advanced, setAdvanced] = useState(false);
+  const anyDevices = devices.length > 0;
+  useEffect(() => {
+    if (anyDevices) setAdvanced(true);
+  }, [anyDevices]);
 
   const download = async () => {
     setDownloading(true);
@@ -70,23 +138,12 @@ export function AndroidCard({
   const running = (device: Device) =>
     streams.find((s) => s.kind === 'android' && s.address === device.serial);
 
-  return (
-    <section className="card" aria-labelledby="android-title">
-      <header className="card-head">
-        <span className="card-icon" aria-hidden>
-          <Icon name="android" size={20} />
-        </span>
-        <div className="card-heading">
-          <h2 id="android-title">Android</h2>
-          <p className="card-sub">{t('Über kabelloses Debugging oder USB')}</p>
-        </div>
-        {adb?.path && (
-          <button className="primary" onClick={onPair}>
-            <Icon name="qr" size={15} /> {t('Handy koppeln')}
-          </button>
-        )}
-      </header>
+  const name = miracast?.name || t('dieser Computer');
+  const tone = miracastTone(miracast, miracastEnabled);
+  const ready = miracastEnabled && (tone === 'online' || tone === 'starting');
 
+  const debugging = (
+    <>
       {adb === null && <p className="status-line">{t('Sucht adb…')}</p>}
 
       {adb && !adb.path && (
@@ -177,6 +234,101 @@ export function AndroidCard({
               </li>
             </ol>
           </details>
+        </>
+      )}
+    </>
+  );
+
+  const pairButton = adb?.path && (
+    <button className="primary" onClick={onPair}>
+      <Icon name="qr" size={15} /> {t('Handy koppeln')}
+    </button>
+  );
+
+  return (
+    <section className="card" aria-labelledby="android-title">
+      <header className="card-head">
+        <span className="card-icon" aria-hidden>
+          <Icon name="android" size={20} />
+        </span>
+        <div className="card-heading">
+          <h2 id="android-title">{hasMiracast ? t('Android & Windows-PCs') : 'Android'}</h2>
+          <p className="card-sub">
+            {hasMiracast ? 'Miracast' : t('Über kabelloses Debugging oder USB')}
+          </p>
+        </div>
+        {hasMiracast ? (
+          <Toggle
+            checked={miracastEnabled}
+            onChange={onMiracastToggle}
+            label={t('Miracast empfangen')}
+          />
+        ) : (
+          pairButton
+        )}
+      </header>
+
+      {hasMiracast ? (
+        <>
+          <p className="status-line" data-state={tone}>
+            <i className="dot" aria-hidden />
+            {miracastText(miracast, miracastEnabled)}
+          </p>
+
+          {miracastEnabled && miracast?.pin && (
+            <div className="hint" data-tone="warning">
+              <Icon name="info" size={16} />
+              <div>
+                <p className="hint-title">{t('Gib diese PIN auf dem Gerät ein:')}</p>
+                <p className="pin">{miracast.pin}</p>
+              </div>
+            </div>
+          )}
+
+          {ready && (
+            <ol className="steps">
+              <li>
+                {t(
+                  'Am Handy „Smart View“, „Bildschirm spiegeln“ oder „Cast“ öffnen (Samsung, Xiaomi, OnePlus, Huawei und viele mehr) und „{name}“ wählen.',
+                  { name },
+                )}
+              </li>
+              <li>{t('Windows-PCs: Win+K drücken und „{name}“ wählen.', { name })}</li>
+              <li>
+                {t(
+                  'Beide brauchen nur WLAN – im selben Netz müssen sie nicht sein. Das erste Mal fragt Windows vielleicht nach der Firewall: erlauben.',
+                )}
+              </li>
+            </ol>
+          )}
+
+          <details
+            className="how-to"
+            open={advanced}
+            onToggle={(event) => setAdvanced(event.currentTarget.open)}
+          >
+            <summary>{t('Erweitert: Kabelloses Debugging (z. B. für Pixel)')}</summary>
+            <div className="advanced">
+              <p className="card-foot">
+                {t(
+                  'Pixel-Handys können kein Miracast. Mit kabellosem Debugging spiegelt jedes Android-Handy ab Android 11 – einmal koppeln, dann ein Klick.',
+                )}
+              </p>
+              {pairButton && <div className="hint-actions">{pairButton}</div>}
+              {debugging}
+            </div>
+          </details>
+        </>
+      ) : (
+        <>
+          {debugging}
+          {platform() !== 'windows' && (
+            <p className="card-foot">
+              {t(
+                'Miracast („Smart View“, „Cast“) empfängt UwUMirror nur unter Windows. Hier geht Android über kabelloses Debugging.',
+              )}
+            </p>
+          )}
         </>
       )}
     </section>

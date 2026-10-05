@@ -54,6 +54,10 @@ export type Settings = {
   androidAudio: boolean;
   /** An adb chosen by hand; empty means "find one". */
   adbPath: string;
+
+  /** Windows' Miracast receiver, borrowed while UwUMirror runs. */
+  miracastEnabled: boolean;
+  miracastAudio: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -74,6 +78,8 @@ export const DEFAULT_SETTINGS: Settings = {
   androidFps: 60,
   androidAudio: true,
   adbPath: '',
+  miracastEnabled: true,
+  miracastAudio: true,
 };
 
 const KEY = 'uwumirror.settings';
@@ -110,6 +116,8 @@ export function sanitize(raw: unknown): Settings {
     androidFps: oneOf(input.androidFps, [30, 60] as const, d.androidFps),
     androidAudio: bool(input.androidAudio, d.androidAudio),
     adbPath: text(input.adbPath, 1024),
+    miracastEnabled: bool(input.miracastEnabled, d.miracastEnabled),
+    miracastAudio: bool(input.miracastAudio, d.miracastAudio),
   };
 }
 
