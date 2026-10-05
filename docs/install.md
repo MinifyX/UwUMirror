@@ -40,23 +40,22 @@ and compare with the line in the file.
 UwUMirror itself is one program. A few things it takes from the system when
 they are there, and tells you in the app when they are not:
 
-- **Sound for AirPlay** needs FFmpeg's `libavcodec` (FFmpeg 4 to 9). Apple
-  sends mirrored sound as AAC-ELD; the one standalone decoder for it
-  (Fraunhofer's FDK) can't be combined with the AGPL, so UwUMirror uses the
-  FFmpeg on your system instead of shipping a decoder. Linux: the `ffmpeg` package. macOS: `brew install ffmpeg`.
-  Windows: a "shared" build, the one with `avcodec-*.dll` — most easily
-  `winget install Gyan.FFmpeg.Shared` in a command prompt; UwUMirror finds it
-  by itself. That one is x64 only: on Windows on ARM, take a `winarm64`
-  shared build (e.g. from [BtbN](https://github.com/BtbN/FFmpeg-Builds/releases))
-  and put its `bin` folder on your `PATH`. Without FFmpeg, the picture comes
-  without sound.
+- **Sound for AirPlay** needs FFmpeg's `libavcodec`. Apple sends mirrored
+  sound as AAC-ELD; the one standalone decoder for it (Fraunhofer's FDK)
+  can't be combined with the AGPL, so UwUMirror uses FFmpeg's (LGPL). On
+  Windows and macOS it brings a tiny build of its own, with nothing but the
+  AAC and ALAC decoders: nothing to install. The Linux packages depend on
+  your distribution's FFmpeg and install it along. An FFmpeg of your own
+  (4 to 9) is used when the bundled one is missing.
 - **Android** needs `adb`. On Windows, macOS and Linux x64 UwUMirror offers to
   download Google's platform-tools for you. On Linux arm64 Google has none:
   install your distribution's `adb` / `android-tools` package. An `adb` you
   already have (Android Studio, Homebrew, a package) is found too.
 - **Video on Linux** is decoded by WebKitGTK through GStreamer: H.264 needs
   `gst-libav` (Debian/Ubuntu: `gstreamer1.0-libav`) and `gst-plugins-good`.
-  Windows and macOS have what they need built in.
+  The .deb and the AUR package depend on them; with the .rpm and the portable
+  folder, install them yourself (see below). Windows and macOS have what they
+  need built in.
 
 ## Windows
 
@@ -117,9 +116,10 @@ too, but leaves them in
 ## Linux
 
 **Ubuntu, Debian and relatives:** `sudo apt install ./UwUMirror-linux-x64.deb`
-(`…-arm64.deb` on ARM). apt brings the recommended extras along — `adb`,
-`ffmpeg`, `gstreamer1.0-libav` and `gstreamer1.0-plugins-good` — unless you
-switched recommends off. Uninstall with `sudo apt remove uwumirror`.
+(`…-arm64.deb` on ARM). apt installs what sound and picture need along with
+it — `gstreamer1.0-libav` (which brings FFmpeg's libraries) and
+`gstreamer1.0-plugins-good` — and the recommended `adb` and `ffmpeg` unless
+you switched recommends off. Uninstall with `sudo apt remove uwumirror`.
 
 **Fedora, openSUSE:** `sudo dnf install ./UwUMirror-linux-x64.rpm` or
 `sudo zypper install ./UwUMirror-linux-x64.rpm`. The extras come separately:
@@ -132,9 +132,8 @@ Packman). Uninstall with `sudo dnf remove uwumirror` or
 
 **Arch Linux:** download the release's `PKGBUILD` into an empty folder and
 run `makepkg -si` there; it repacks the `.deb` and checks it against the
-release's checksums. (`uwumirror-bin` on the AUR follows.) pacman lists the
-optional extras — `android-tools`, `ffmpeg`, `gst-libav`, `gst-plugins-good`
-— with what each is for.
+release's checksums. (`uwumirror-bin` on the AUR follows.) `ffmpeg`,
+`gst-libav` and `gst-plugins-good` come along; `android-tools` is optional.
 
 The packages install the app system-wide as package `uwumirror`
 (`/usr/bin/uwumirror-desktop`), with a menu entry, using the system's
@@ -233,9 +232,12 @@ receiver.
   firewall (above), that both are in the same network (not a guest network),
   and that the Wi-Fi doesn't isolate its clients. On Windows the network has
   to be _Private_.
-- **Picture, but no sound (AirPlay):** FFmpeg's `libavcodec` is missing — see
-  [What UwUMirror uses from your system](#what-uwumirror-uses-from-your-system).
-  UwUMirror says so in the app.
+- **Picture, but no sound (AirPlay):** UwUMirror says in the app whether
+  FFmpeg's `libavcodec` is missing (on Linux with the .rpm or the portable
+  folder, see [What UwUMirror uses from your system](#what-uwumirror-uses-from-your-system)).
+  If it isn't, switch on the detailed log in the settings, mirror for a
+  minute with something playing, and attach the log to an issue: it says
+  whether sound arrived, decoded and was louder than silence.
 - **No picture on Linux, or a black one:** the GStreamer H.264 plugins are
   missing — install `gstreamer1.0-libav` / `gst-libav`.
 - **"adb not found":** let UwUMirror download platform-tools, or install your
@@ -303,16 +305,14 @@ mit der Zeile in der Datei vergleichen.
 UwUMirror selbst ist ein Programm. Ein paar Dinge nimmt es vom System, wenn sie
 da sind, und sagt in der App Bescheid, wenn nicht:
 
-- **Ton über AirPlay** braucht FFmpegs `libavcodec` (FFmpeg 4 bis 9). Apple
-  schickt den Ton beim Spiegeln als AAC-ELD; der einzige eigenständige
-  Decoder dafür (Fraunhofers FDK) verträgt sich nicht mit der AGPL, darum nutzt
-  UwUMirror das FFmpeg deines Systems, statt selbst einen mitzubringen. Linux: das Paket `ffmpeg`. macOS:
-  `brew install ffmpeg`. Windows: ein „shared“-Build, der mit
-  `avcodec-*.dll` — am einfachsten `winget install Gyan.FFmpeg.Shared` in
-  der Eingabeaufforderung; UwUMirror findet ihn von selbst. Den gibt es nur
-  für x64: Unter Windows auf ARM einen `winarm64`-shared-Build nehmen (z. B.
-  von [BtbN](https://github.com/BtbN/FFmpeg-Builds/releases)) und seinen
-  Ordner `bin` in den `PATH` aufnehmen. Ohne FFmpeg kommt das Bild ohne Ton.
+- **Ton über AirPlay** braucht FFmpegs `libavcodec`. Apple schickt den Ton
+  beim Spiegeln als AAC-ELD; der einzige eigenständige Decoder dafür
+  (Fraunhofers FDK) verträgt sich nicht mit der AGPL, darum nutzt UwUMirror
+  den von FFmpeg (LGPL). Unter Windows und macOS bringt es einen winzigen
+  eigenen Build mit, nur mit den Decodern für AAC und ALAC: nichts zu
+  installieren. Die Linux-Pakete hängen vom FFmpeg deiner Distribution ab und
+  installieren es mit. Ein eigenes FFmpeg (4 bis 9) wird genommen, wenn das
+  mitgebrachte fehlt.
 - **Android** braucht `adb`. Unter Windows, macOS und Linux x64 bietet
   UwUMirror an, Googles platform-tools für dich herunterzuladen. Für Linux
   arm64 hat Google keine: installiere das Paket `adb` / `android-tools` deiner
@@ -320,7 +320,9 @@ da sind, und sagt in der App Bescheid, wenn nicht:
   Paket), wird auch gefunden.
 - **Video unter Linux** dekodiert WebKitGTK über GStreamer: H.264 braucht
   `gst-libav` (Debian/Ubuntu: `gstreamer1.0-libav`) und `gst-plugins-good`.
-  Windows und macOS haben alles Nötige an Bord.
+  Die .deb und das AUR-Paket hängen davon ab; bei .rpm und portablem Ordner
+  installierst du sie selbst (siehe unten). Windows und macOS haben alles
+  Nötige an Bord.
 
 ## Windows
 
@@ -387,9 +389,10 @@ Papierkorb ziehen geht auch, lässt beides aber in
 ## Linux
 
 **Ubuntu, Debian und Verwandte:** `sudo apt install ./UwUMirror-linux-x64.deb`
-(`…-arm64.deb` auf ARM). apt bringt die empfohlenen Extras gleich mit — `adb`,
-`ffmpeg`, `gstreamer1.0-libav` und `gstreamer1.0-plugins-good` —, außer du
-hast Empfehlungen abgeschaltet. Deinstallieren mit `sudo apt remove uwumirror`.
+(`…-arm64.deb` auf ARM). apt installiert mit, was Ton und Bild brauchen —
+`gstreamer1.0-libav` (bringt FFmpegs Bibliotheken mit) und
+`gstreamer1.0-plugins-good` —, dazu die empfohlenen `adb` und `ffmpeg`, außer
+du hast Empfehlungen abgeschaltet. Deinstallieren mit `sudo apt remove uwumirror`.
 
 **Fedora, openSUSE:** `sudo dnf install ./UwUMirror-linux-x64.rpm` oder
 `sudo zypper install ./UwUMirror-linux-x64.rpm`. Die Extras kommen getrennt:
@@ -402,9 +405,8 @@ Packman). Deinstallieren mit `sudo dnf remove uwumirror` bzw.
 
 **Arch Linux:** das `PKGBUILD` des Releases in einen leeren Ordner laden und
 dort `makepkg -si` ausführen; es packt die `.deb` um und prüft sie gegen die
-Prüfsummen des Releases. (`uwumirror-bin` im AUR folgt.) pacman
-listet die optionalen Extras — `android-tools`, `ffmpeg`, `gst-libav`,
-`gst-plugins-good` — mit dem, wofür sie jeweils sind.
+Prüfsummen des Releases. (`uwumirror-bin` im AUR folgt.) `ffmpeg`,
+`gst-libav` und `gst-plugins-good` kommen mit; `android-tools` ist optional.
 
 Die Pakete installieren die App systemweit als Paket `uwumirror`
 (`/usr/bin/uwumirror-desktop`), mit Eintrag im Anwendungsmenü, und nutzen das
@@ -506,9 +508,12 @@ deine Geräte sehen einfach einen neuen Empfänger.
   Firewall (oben), ob beide im selben Netz sind (nicht im Gastnetz) und ob das
   WLAN seine Geräte voneinander isoliert. Unter Windows muss das Netzwerk
   _Privat_ sein.
-- **Bild, aber kein Ton (AirPlay):** FFmpegs `libavcodec` fehlt — siehe
-  [Was UwUMirror vom System nutzt](#was-uwumirror-vom-system-nutzt). UwUMirror
-  sagt es dir in der App.
+- **Bild, aber kein Ton (AirPlay):** Ob FFmpegs `libavcodec` fehlt, sagt
+  UwUMirror in der App (unter Linux mit .rpm oder portablem Ordner siehe
+  [Was UwUMirror vom System nutzt](#was-uwumirror-vom-system-nutzt)). Fehlt
+  es nicht: in den Einstellungen das ausführliche Log einschalten, eine
+  Minute mit Ton spiegeln und das Log an ein Issue hängen — darin steht, ob
+  Ton ankam, dekodiert wurde und lauter als Stille war.
 - **Kein Bild unter Linux, oder ein schwarzes:** Die H.264-Plugins von
   GStreamer fehlen — `gstreamer1.0-libav` / `gst-libav` installieren.
 - **„adb not found“:** UwUMirror die platform-tools herunterladen lassen, oder
