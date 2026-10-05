@@ -17,7 +17,7 @@
  * decoder restart.
  */
 
-import type { RawFrame } from './api';
+import { api, type RawFrame } from './api';
 import { codecString, parameterSets, splitNals, spsSize, type Nal } from './h264';
 import { avcConfig, initSegment, mediaSegment, sample, TIMESCALE } from './mp4';
 import { getSettings } from './settings';
@@ -55,6 +55,64 @@ function frameUnits(nals: Nal[]): Uint8Array[] {
     .map((nal) => nal.data);
 }
 
+/** How often the page's latency goes into the log. */
+const LATENCY_EVERY_MS = 5000;
+/** Further from now than this, a timestamp isn't the sender's clock. */
+const PLAUSIBLE_MS = 5000;
+
+function summary(values: number[]): string {
+  const sorted = [...values].sort((a, b) => a - b);
+  const at = (q: number) => (sorted[Math.round((sorted.length - 1) * q)] ?? 0).toFixed(1);
+  return `median ${at(0.5)} ms, p95 ${at(0.95)} ms, max ${at(1)} ms over ${sorted.length} frames`;
+}
+
+/**
+ * How late pictures are on the page, into the app's log every few seconds
+ * (with the detailed log on): from the page receiving a frame to drawing
+ * it, which is the decoder; and, for UwUCast, whose senders stamp frames
+ * with their wall clock, from capture to drawing — everything, the network
+ * and the hub included. Other sources' timestamps count from their own
+ * start and are left out of the second.
+ */
+class LatencyMeter {
+  /** When the page got each frame not yet drawn, by timestamp. */
+  private readonly arrived = new Map<number, number>();
+  private toDrawn: number[] = [];
+  private fromCapture: number[] = [];
+  private since = performance.now();
+
+  received(pts: number) {
+    // A decoder that drops frames mustn't grow this for ever.
+    if (this.arrived.size > 600) this.arrived.clear();
+    this.arrived.set(pts, performance.now());
+  }
+
+  drawn(pts: number) {
+    const now = performance.now();
+    const at = this.arrived.get(pts);
+    if (at !== undefined) {
+      this.arrived.delete(pts);
+      this.toDrawn.push(now - at);
+    }
+    const age = performance.timeOrigin + now - pts / 1000;
+    if (Math.abs(age) < PLAUSIBLE_MS) this.fromCapture.push(age);
+    if (now - this.since >= LATENCY_EVERY_MS) this.report(now);
+  }
+
+  private report(now: number) {
+    const parts: string[] = [];
+    if (this.toDrawn.length > 0) parts.push(`received → drawn: ${summary(this.toDrawn)}`);
+    if (this.fromCapture.length > 0) parts.push(`capture → drawn: ${summary(this.fromCapture)}`);
+    this.toDrawn = [];
+    this.fromCapture = [];
+    this.since = now;
+    if (parts.length === 0) return;
+    const report = parts.join('; ');
+    console.debug('video latency', report);
+    void api.videoLatency(report).catch(() => undefined);
+  }
+}
+
 class WebCodecsBackend implements Backend {
   private decoder: VideoDecoder | null = null;
   private sps: Uint8Array | null = null;
@@ -64,6 +122,7 @@ class WebCodecsBackend implements Backend {
   private decodedAny = false;
   private sent = 0;
   private readonly context: CanvasRenderingContext2D | null;
+  private readonly latency = new LatencyMeter();
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -76,6 +135,9 @@ class WebCodecsBackend implements Backend {
   private configure(sps: Uint8Array, pps: Uint8Array) {
     this.decoder?.close();
     const decoder = new VideoDecoder({
+      // Drawn the moment it is decoded, not at the next animation frame: a
+      // desynchronized canvas shows it at the next refresh, and a newer
+      // frame decoded before then simply draws over it.
       output: (frame) => {
         const { displayWidth: width, displayHeight: height } = frame;
         if (this.canvas.width !== width || this.canvas.height !== height) {
@@ -83,6 +145,7 @@ class WebCodecsBackend implements Backend {
           this.canvas.height = height;
         }
         this.context?.drawImage(frame, 0, 0, width, height);
+        this.latency.drawn(frame.timestamp);
         frame.close();
         this.failures = 0;
         this.decodedAny = true;
@@ -130,6 +193,7 @@ class WebCodecsBackend implements Backend {
     if (this.waitingForKey || !this.decoder || this.decoder.state !== 'configured') return;
     const units = frameUnits(nals);
     if (units.length === 0) return;
+    this.latency.received(pts);
     this.decoder.decode(
       new EncodedVideoChunk({ type: key ? 'key' : 'delta', timestamp: pts, data: sample(units) }),
     );
@@ -154,6 +218,8 @@ class MediaSourceBackend implements Backend {
   private time = 0;
   private lastPts: number | null = null;
   private url: string | null = null;
+  /** Stay closer to the live edge: the source sends steadily. */
+  lowLatency = false;
 
   constructor(
     private readonly video: HTMLVideoElement,
@@ -215,12 +281,20 @@ class MediaSourceBackend implements Backend {
     this.chase();
   }
 
-  /** Live is live: jump to the newest picture when playback falls behind. */
+  /** Live is live: jump to the newest picture when playback falls behind.
+   * A jump decodes from the last key frame on, a stall of its own, so a
+   * source that sends steadily (`StreamPlayer.setLowLatency`) is instead
+   * played a little faster until it is within a few frames of the edge. */
   private chase() {
     const { buffered } = this.video;
     if (buffered.length === 0) return;
     const end = buffered.end(buffered.length - 1);
-    if (end - this.video.currentTime > 0.5) this.video.currentTime = Math.max(0, end - 0.05);
+    const behind = end - this.video.currentTime;
+    if (behind > (this.lowLatency ? 1 : 0.5)) {
+      this.video.currentTime = Math.max(0, end - 0.05);
+    } else if (this.lowLatency) {
+      this.video.playbackRate = behind > 0.15 ? 1.25 : behind > 0.05 ? 1.1 : 1;
+    }
     if (this.video.paused) void this.video.play().catch(() => undefined);
     this.trim(false);
   }
@@ -346,6 +420,7 @@ export class StreamPlayer {
   private readonly listeners = new Set<(info: PlayerInfo) => void>();
   private size = { width: 0, height: 0 };
   private triedMediaSource = false;
+  private lowLatency = false;
 
   constructor() {
     this.element = document.createElement('div');
@@ -393,7 +468,7 @@ export class StreamPlayer {
     video.playsInline = true;
     video.disablePictureInPicture = true;
     this.element.replaceChildren(video);
-    this.backend = new MediaSourceBackend(
+    const backend = new MediaSourceBackend(
       video,
       () => this.size,
       this.frame,
@@ -404,12 +479,22 @@ export class StreamPlayer {
         this.set({ backend: 'none', error: 'no-decoder' });
       },
     );
+    backend.lowLatency = this.lowLatency;
+    this.backend = backend;
     this.set({ backend: 'mediasource' });
   }
 
   /** The size the source announced, for engines that need it up front. */
   setSize(width: number, height: number) {
     this.size = { width, height };
+  }
+
+  /** The source sends steadily over a local network (UwUCast): Media
+   * Source, if it plays, stays closer to the live edge. WebCodecs draws
+   * every frame as it comes either way. */
+  setLowLatency(on: boolean) {
+    this.lowLatency = on;
+    if (this.backend instanceof MediaSourceBackend) this.backend.lowLatency = on;
   }
 
   push(key: boolean, pts: number, data: Uint8Array) {

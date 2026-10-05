@@ -106,6 +106,15 @@ impl Cache {
     }
 }
 
+/// What the page measured of how late pictures are (`lib/player.ts`), into
+/// the log with the receiver's own numbers.
+#[tauri::command]
+pub fn video_latency(report: String) {
+    // From the page, so cut short: it ends up in a file.
+    let report: String = report.chars().take(300).collect();
+    tracing::debug!("page: {report}");
+}
+
 pub fn encode_video(id: u64, packet: &VideoPacket) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(17 + packet.data.len());
     bytes.extend_from_slice(&id.to_le_bytes());
@@ -245,10 +254,12 @@ impl Hub {
             StreamEvent::Audio { id, status } => self.update(id, |s| s.audio = Some(status)),
             StreamEvent::Video { id, packet } => {
                 self.resume(id);
-                self.caches.lock().entry(id).or_default().push(&packet);
+                // To the page first, then into the cache: the live frame
+                // waits for nothing it doesn't need.
                 if let Some(channel) = self.video.lock().as_ref() {
                     let _ = channel.send(InvokeResponseBody::Raw(encode_video(id, &packet)));
                 }
+                self.caches.lock().entry(id).or_default().push(&packet);
             }
             StreamEvent::Frame { id, frame } => {
                 self.resume(id);

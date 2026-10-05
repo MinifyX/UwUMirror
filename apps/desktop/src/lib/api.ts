@@ -148,6 +148,8 @@ export const api = {
   airplayForgetDevices: () => invoke<void>('airplay_forget_devices'),
   streams: () => invoke<StreamState[]>('streams'),
   streamStop: (id: number) => invoke<boolean>('stream_stop', { id }),
+  /** What the page measured of how late pictures are, for the log. */
+  videoLatency: (report: string) => invoke<void>('video_latency', { report }),
   androidStatus: () => invoke<AdbStatus>('android_status'),
   androidDevices: () => invoke<Device[]>('android_devices'),
   androidQr: () => invoke<QrPairing>('android_qr'),

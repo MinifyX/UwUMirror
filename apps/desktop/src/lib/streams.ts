@@ -38,6 +38,7 @@ function playerFor(id: number): StreamPlayer {
 function upsert(state: StreamState): Stream {
   const player = playerFor(state.id);
   if (state.width > 0 && state.height > 0) player.setSize(state.width, state.height);
+  player.setLowLatency(state.kind === 'cast');
   const stream = { ...state, player };
   const index = streams.findIndex((s) => s.id === state.id);
   publish(
