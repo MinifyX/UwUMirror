@@ -90,6 +90,8 @@ simple on purpose: open it, and it is ready.
 >   sender manages), with legacy pairing and FairPlay, the dialect the
 >   open-source receivers before it speak ([UxPlay](https://github.com/FDH2/UxPlay),
 >   RPiPlay, shairplay). Sound through FFmpeg's libavcodec from the system.
+>   Macs that ask for a PIN (macOS Sequoia) get one on screen, once; after
+>   that they're remembered.
 > - AirPlay audio (ALAC, AAC) from Music, Podcasts and friends.
 > - Android: pairing by QR code or pairing code, connecting by address, USB,
 >   mirroring with scrcpy 4.1's server, raw PCM sound from Android 11 on.
@@ -102,7 +104,8 @@ simple on purpose: open it, and it is ready.
 >
 > **What doesn't, yet.** Controlling the phone with mouse and keyboard,
 > AirPlay video casting (the "AirPlay" button in video apps, not screen
-> mirroring), HEVC, a PIN for AirPlay, recording, automatic updates. The
+> mirroring), HEVC, a PIN required from every AirPlay sender, recording,
+> automatic updates. The
 > [roadmap](docs/roadmap.md) has the order.
 
 ## Install

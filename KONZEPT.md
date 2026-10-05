@@ -67,6 +67,11 @@ Android-Handys. Also: ich.
 - Kein PIN: Solange der Empfang an ist, darf jedes Gerät im Netz spiegeln —
   wie ein Apple TV auf „Alle im selben Netzwerk“. Ein Schalter auf der
   Startseite macht ihn aus.
+- PIN nur, wenn der Sender sie verlangt (Macs ab macOS Sequoia, verwaltete
+  Geräte): UwUMirror zeigt vier Ziffern groß an, gekoppelt wird mit Apples
+  SRP-6a (`pair-setup-pin`). Danach kennt UwUMirror den Mac
+  (`airplay-trusted`) und fragt nicht wieder; „Vertraute Geräte vergessen“ in
+  den Einstellungen setzt das zurück.
 
 **Miracast (Android-Handys, Windows-PCs; nur unter Windows)**
 
@@ -114,7 +119,7 @@ Android-Handys. Also: ich.
   (für den Beamer).
 
 **Nicht (noch nicht):** Handy mit Maus und Tastatur steuern, AirPlay-Video
-(„AirPlay“-Knopf in Video-Apps, HLS), HEVC, PIN für AirPlay, Aufnahme,
+(„AirPlay“-Knopf in Video-Apps, HLS), HEVC, PIN für jeden AirPlay-Sender, Aufnahme,
 automatische Updates. Mit echten Geräten ist die Beta noch nicht getestet —
 nur gegen simulierte Sender, siehe `docs/architecture.md`.
 
@@ -168,6 +173,7 @@ Details, Protokolle und Tests: [`docs/architecture.md`](docs/architecture.md).
   Körper, Paketgrößen; FairPlay-Modi, bevor playfair sie als Tabellenindex
   nimmt; Pfade beim Entpacken der platform-tools.
 - Der AirPlay-Empfang ist offen für das lokale Netz (wie ein Apple TV). Wer das
-  nicht will, schaltet ihn aus; ein PIN steht auf der Roadmap. Für den Empfang
+  nicht will, schaltet ihn aus; ein PIN für jeden Sender steht auf der
+  Roadmap (bisher nur für Sender, die selbst danach fragen). Für den Empfang
   von anderen Computern (UwUCast) gilt dasselbe, mit eigenem Schalter; jede
   Länge auf der Leitung ist begrenzt geprüft.

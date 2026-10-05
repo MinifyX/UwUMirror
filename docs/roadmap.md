@@ -8,8 +8,6 @@ get done when I feel like it.
 - **Try it with real devices.** The first beta is tested against simulated
   senders only; the first real iPhones and Android phones will tell what's
   missing. Logs from those runs decide what comes first.
-- **A PIN for AirPlay**, optional: the four digits Apple TVs show, so only who
-  sees the screen can connect (AirPlay's pair-setup-pin with SRP-6a).
 - **Controlling the Android phone** with mouse and keyboard: scrcpy's control
   socket is already there, UwUMirror just doesn't open it yet.
 - **Automatic updates**, signed, as in UwURDP.
@@ -19,6 +17,9 @@ get done when I feel like it.
 - AirPlay video casting (the AirPlay button in video apps, HLS), not just
   screen mirroring.
 - HEVC for AirPlay where the webview can decode it (4K with less bandwidth).
+- A PIN for every AirPlay sender, optional, so only who sees the screen can
+  connect. (Senders that ask for a PIN — Macs on macOS Sequoia — already get
+  one, through the same pair-setup-pin.)
 - Recording a stream to a file.
 - Sound for mirrored iPhones on Windows without installing FFmpeg — through a
   decoder the system has, if there is one for AAC-ELD.

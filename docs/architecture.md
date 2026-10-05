@@ -80,7 +80,33 @@ pairing, FairPlay, H.264 only (the HEVC bit stays off, so senders never try it).
 3. **Pairing** (`pairing.rs`): `/pair-setup` returns our Ed25519 key;
    `/pair-verify` trades X25519 keys, signs both with Ed25519, encrypted with
    AES-128-CTR under `SHA-512("Pair-Verify-AES-Key" ‖ secret)`. The receiver's
-   key and its made-up MAC address are kept in `airplay-identity`.
+   key and its made-up MAC address are kept in `airplay-identity`. iPhones
+   need no PIN: anyone on the network may mirror while the receiver is on.
+   **PIN pairing** (`pin.rs`, `srp.rs`), only for a sender that asks — Macs on
+   macOS Sequoia, managed devices — the way UxPlay does it:
+   - `/pair-pin-start`: four digits from the OS RNG, sent to the page as an
+     `airplay-pairing` event (`PairingEvent::PinRequested`) and shown large.
+     A PIN is good for one minute and one try; after five wrong ones in a row
+     no new PIN comes for a minute.
+   - `/pair-setup-pin` 1, `{method: "pin", user}` → `{salt, pk}`: SRP-6a with
+     RFC 5054's 2048-bit group, g = 2, SHA-1, `k = H(N ‖ PAD(g))`,
+     `u = H(PAD(A) ‖ PAD(B))`, `x = H(s ‖ H(user ":" PIN))`, a 16-byte salt.
+   - `/pair-setup-pin` 2, `{pk: A, proof: M1}` → `{proof: M2}`, or 470 for a
+     wrong PIN. Apple's variant: the session key is 40 bytes,
+     `K = H(S ‖ 00000000) ‖ H(S ‖ 00000001)`, and
+     `M1 = H(H(N) ^ H(g) ‖ H(user) ‖ s ‖ A ‖ B ‖ K)`, `M2 = H(A ‖ M1 ‖ K)`,
+     numbers as their shortest big-endian bytes (`B` and the salt are drawn
+     without a leading zero, so it never matters which).
+   - `/pair-setup-pin` 3, `{epk, authTag}` → `{epk, authTag}`: the lasting
+     Ed25519 keys both ways, AES-128-GCM with a 16-byte nonce, no associated
+     data, `key = SHA-512("Pair-Setup-AES-Key" ‖ K)[..16]`,
+     `iv = SHA-512("Pair-Setup-AES-IV" ‖ K)[..16]`, its last byte + 1 for the
+     sender's message and + 2 for ours.
+   - Then pair-verify as usual. The sender's key goes into `airplay-trusted`
+     (one `<hex key> <id>` per line, next to the identity). A connection that
+     goes to pair-verify without any pair-setup must be a returning Mac: one
+     whose key is in that file is let in, any other gets 470 (and a Mac then
+     asks for a PIN again). Settings → AirPlay forgets the file.
 4. **FairPlay** (`fairplay.rs`, `playfair/`): two `/fp-setup` rounds with fixed
    replies; SETUP's 72-byte `ekey` is unwrapped by playfair's
    `playfair_decrypt`. The key message's mode byte is checked before playfair
@@ -244,6 +270,14 @@ Everything that can be tested without a phone is:
   frame on the mirroring connection, sets up sound, sets the volume — and the
   test checks every event, the decrypted frame byte for byte, and that
   `end_stream` ends it.
+- **A Mac pairing with a PIN** (`airplay/src/tests.rs`): pair-pin-start, the
+  three pair-setup-pin steps with the PIN the receiver showed (checking `M2`
+  and opening the receiver's sealed key), pair-verify, FairPlay and SETUP;
+  then a reconnect straight to pair-verify (let in), a stranger doing the same
+  (470), an iPhone-style pair-setup (no PIN), and the forgotten Mac (470). With
+  a wrong PIN: 470, the PIN used up, no way around it. The SRP arithmetic is
+  checked against RFC 5054's test vectors, Apple's changes and the GCM sealing
+  against values computed independently with Node's BigInt and `crypto`.
 - **The running app, fed by a simulated iPhone**: `mirror_a_file` (ignored by
   default) mirrors an H.264 file into a running UwUMirror; see the README.
   Used to check the picture on Linux with both decoders.
