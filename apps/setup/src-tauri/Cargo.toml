@@ -27,6 +27,8 @@ zstd = "0.13"
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
+# UwUMirror's firewall rules, the same the app sets up.
+uwumirror-firewall.workspace = true
 winreg = "0.55"
 windows = { version = "0.61", features = [
   "Win32_Foundation",

@@ -5210,6 +5210,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-dialog",
  "tempfile",
+ "uwumirror-firewall",
  "windows 0.61.3",
  "winreg",
  "zstd",
