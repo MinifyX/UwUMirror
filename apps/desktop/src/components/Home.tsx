@@ -25,7 +25,7 @@ type Props = {
 /** How often the phone list is read while the start page shows. */
 const DEVICE_POLL_MS = 3000;
 
-/** The start page: the two ways in, and what is running. */
+/** The start page: the ways in, and the device that mirrors, if one does. */
 export function Home(props: Props) {
   useLanguage();
   const settings = useSettings();
@@ -71,22 +71,18 @@ export function Home(props: Props) {
         <NyuScene name={streams.length > 0 ? 'connecting' : 'waiting'} className="home-scene" />
         <div>
           <h1 className="home-title">
-            {streams.length === 0
-              ? t('Bereit zum Spiegeln')
-              : streams.length === 1
-                ? t('Ein Gerät spiegelt gerade')
-                : t('{count} Geräte spiegeln gerade', { count: streams.length })}
+            {streams.length === 0 ? t('Bereit zum Spiegeln') : t('Ein Gerät spiegelt gerade')}
           </h1>
           <p className="home-text">
             {t(
-              'iPhones, iPads, Macs und Android-Handys in deinem Netzwerk zeigen ihren Bildschirm hier – ohne Cloud, ohne Konto.',
+              'iPhones, iPads, Macs und Android-Handys in deinem Netzwerk zeigen ihren Bildschirm hier – ohne Cloud, ohne Konto. Eins nach dem anderen: Wer neu spiegelt, löst das Gerät davor ab.',
             )}
           </p>
         </div>
       </section>
 
       {streams.length > 0 && (
-        <section className="running" aria-label={t('Laufende Streams')}>
+        <section className="running" aria-label={t('Spiegelt gerade')}>
           {streams.map((stream) => (
             <div key={stream.id} className="running-item">
               <Icon name={streamIcon(stream)} size={18} />

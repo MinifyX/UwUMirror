@@ -13,7 +13,6 @@ import { onStreamEnded, onStreamStarted, startStreams, useStreams } from './lib/
 import { Home } from './components/Home';
 import { SettingsDialog } from './components/SettingsDialog';
 import { StreamView } from './components/StreamView';
-import { TabBar } from './components/TabBar';
 import { TitleBar } from './components/TitleBar';
 import { showToast, Toasts } from './components/Toasts';
 
@@ -126,7 +125,7 @@ export function App() {
     settings.airplayAudio,
   ]);
 
-  // A tab whose stream is gone falls back to the start page.
+  // A stream that is gone falls back to the start page.
   useEffect(() => {
     if (activeId !== null && !streams.some((s) => s.id === activeId)) setActiveId(null);
   }, [activeId, streams]);
@@ -157,18 +156,17 @@ export function App() {
     }
   }, []);
 
-  // Keyboard: Ctrl+, settings, Ctrl+0 start, Ctrl+1–9 streams, F11 full screen.
+  // Keyboard: Ctrl+, settings, Ctrl+0 start, Ctrl+1 the stream, F11 full screen.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const ctrl = event.ctrlKey || event.metaKey;
       if (ctrl && event.key === ',') {
         event.preventDefault();
         setSettingsOpen(true);
-      } else if (ctrl && /^[0-9]$/.test(event.key)) {
+      } else if (ctrl && (event.key === '0' || event.key === '1')) {
         event.preventDefault();
-        const index = Number(event.key);
-        if (index === 0) setActiveId(null);
-        else if (streams[index - 1]) setActiveId(streams[index - 1]!.id);
+        if (event.key === '0') setActiveId(null);
+        else if (streams[0]) setActiveId(streams[0].id);
       } else if (event.key === 'F11' && active && active.kind !== 'airplayaudio') {
         event.preventDefault();
         setWindowFullscreen(!fullscreen);
@@ -195,7 +193,6 @@ export function App() {
     <div className="shell" data-fullscreen={fullscreen && !!active}>
       <div className="background" ref={backgroundRef}>
         <TitleBar onSettings={() => setSettingsOpen(true)} />
-        <TabBar streams={streams} activeId={activeId} onSelect={setActiveId} onStop={stop} />
         <main className="main">
           {active ? (
             <StreamView
@@ -204,6 +201,7 @@ export function App() {
               fullscreen={fullscreen}
               onToggleFullscreen={() => setWindowFullscreen(!fullscreen)}
               onStop={() => stop(active.id)}
+              onHome={() => setActiveId(null)}
             />
           ) : (
             <Home

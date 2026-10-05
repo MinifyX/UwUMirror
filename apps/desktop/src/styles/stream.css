@@ -124,8 +124,7 @@
 
 /* ── Full screen: nothing but the picture and a bar that shows on hover ── */
 
-.shell[data-fullscreen='true'] .titlebar,
-.shell[data-fullscreen='true'] .tabbar {
+.shell[data-fullscreen='true'] .titlebar {
   display: none;
 }
 

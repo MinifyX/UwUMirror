@@ -11,11 +11,7 @@
   "Maximieren": "Maximize",
   "Verkleinern": "Restore",
   "Schließen": "Close",
-  "Streams": "Streams",
   "Start": "Home",
   "Start (Strg+0)": "Home (Ctrl+0)",
-  "{name} (Strg+{number})": "{name} (Ctrl+{number})",
-  "Spiegelung beenden": "Stop mirroring",
-  "{name}: Spiegelung beenden": "{name}: stop mirroring",
   "AirPlay-Ton": "AirPlay audio"
 }

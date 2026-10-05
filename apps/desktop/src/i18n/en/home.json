@@ -1,9 +1,8 @@
 {
   "Bereit zum Spiegeln": "Ready to mirror",
   "Ein Gerät spiegelt gerade": "One device is mirroring",
-  "{count} Geräte spiegeln gerade": "{count} devices are mirroring",
-  "iPhones, iPads, Macs und Android-Handys in deinem Netzwerk zeigen ihren Bildschirm hier – ohne Cloud, ohne Konto.": "iPhones, iPads, Macs and Android phones on your network show their screen here – no cloud, no account.",
-  "Laufende Streams": "Running streams",
+  "iPhones, iPads, Macs und Android-Handys in deinem Netzwerk zeigen ihren Bildschirm hier – ohne Cloud, ohne Konto. Eins nach dem anderen: Wer neu spiegelt, löst das Gerät davor ab.": "iPhones, iPads, Macs and Android phones on your network show their screen here – no cloud, no account. One at a time: whoever starts mirroring takes over from the device before.",
+  "Spiegelt gerade": "Mirroring now",
   "Zeigen": "Show",
   "Beenden": "Stop",
 

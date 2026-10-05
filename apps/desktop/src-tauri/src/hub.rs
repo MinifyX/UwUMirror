@@ -18,6 +18,10 @@
 //! page that (re)subscribes — after a reload, or once the window first shows
 //! — can start decoding at once instead of waiting for the sender's next key
 //! frame, which an iPhone showing a still screen may not send for minutes.
+//!
+//! One device mirrors at a time: a stream that starts while another runs
+//! takes its place, as on an Apple TV, and the hub asks for the old one to
+//! be ended.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -108,6 +112,8 @@ pub struct Hub {
     video: Mutex<Option<Channel<InvokeResponseBody>>>,
     /// Told when a stream ends, e.g. so the Android side forgets its mirror.
     on_end: Mutex<Vec<EndCallback>>,
+    /// Told to end a stream that a newer one replaces.
+    on_replace: Mutex<Option<EndCallback>>,
 }
 
 impl Hub {
@@ -118,7 +124,12 @@ impl Hub {
             caches: Mutex::new(HashMap::new()),
             video: Mutex::new(None),
             on_end: Mutex::new(Vec::new()),
+            on_replace: Mutex::new(None),
         })
+    }
+
+    pub fn on_replace(&self, callback: impl Fn(u64) + Send + Sync + 'static) {
+        *self.on_replace.lock() = Some(Box::new(callback));
     }
 
     pub fn on_end(&self, callback: impl Fn(u64) + Send + Sync + 'static) {
@@ -173,9 +184,18 @@ impl Hub {
                         paused: false,
                     },
                 };
+                let replaced: Vec<u64> = streams.keys().copied().collect();
                 streams.insert(id, state.clone());
                 drop(streams);
                 self.emit(Message::Started { stream: &state });
+                if !replaced.is_empty() {
+                    tracing::info!(new = id, old = ?replaced, "a new device replaces the mirroring one");
+                    if let Some(replace) = self.on_replace.lock().as_ref() {
+                        for old in replaced {
+                            replace(old);
+                        }
+                    }
+                }
             }
             StreamEvent::VideoSize { id, width, height } => self.update(id, |s| {
                 s.width = width;

@@ -197,14 +197,19 @@ fn subscribe_video(state: State<'_, AppState>, channel: Channel<InvokeResponseBo
     state.hub.subscribe(channel);
 }
 
-#[tauri::command]
-async fn stream_stop(state: State<'_, AppState>, id: u64) -> Result<bool> {
+/// Ends a stream at whichever source it came from.
+async fn stop_stream(state: &AppState, id: u64) -> bool {
     if let Some(receiver) = &state.airplay.lock().await.receiver {
         if receiver.end_stream(id) {
-            return Ok(true);
+            return true;
         }
     }
-    Ok(state.android.stop(id))
+    state.android.stop(id)
+}
+
+#[tauri::command]
+async fn stream_stop(state: State<'_, AppState>, id: u64) -> Result<bool> {
+    Ok(stop_stream(&state, id).await)
 }
 
 #[tauri::command]
@@ -335,7 +340,16 @@ pub fn run() {
         .setup(|app| {
             log::init(&app.path().app_log_dir()?);
             let data = app.path().app_data_dir()?;
-            let server = app.path().resource_dir()?.join("scrcpy-server");
+            let resources = app.path().resource_dir()?;
+            let server = resources.join("scrcpy-server");
+            // Windows loads a DLL's neighbours only for a plain path, not a
+            // `\\?\` one.
+            let resources = resources
+                .to_str()
+                .and_then(|path| path.strip_prefix(r"\\?\"))
+                .map(PathBuf::from)
+                .unwrap_or(resources);
+            decode::set_bundled_ffmpeg(resources.join("ffmpeg"));
             let hub = Hub::new(app.handle().clone());
             let sink: EventSink = {
                 let hub = hub.clone();
@@ -345,6 +359,15 @@ pub fn run() {
             hub.on_end({
                 let android = android.clone();
                 move |id| android.ended(id)
+            });
+            hub.on_replace({
+                let app = app.handle().clone();
+                move |id| {
+                    let app = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        stop_stream(&app.state::<AppState>(), id).await;
+                    });
+                }
             });
             app.manage(AppState {
                 hub,

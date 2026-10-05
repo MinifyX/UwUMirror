@@ -13,6 +13,8 @@ type Props = {
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   onStop: () => void;
+  /** Back to the start page; the mirroring goes on. */
+  onHome: () => void;
 };
 
 const BACKENDS = { webcodecs: 'WebCodecs', mediasource: 'Media Source', none: '–' } as const;
@@ -37,9 +39,9 @@ function audioLabel(status: AudioStatus | null): string | null {
 /**
  * One stream on a dark stage, as big as fits. The picture is the player's own
  * element (a canvas or a video), moved in here while this view shows — the
- * player keeps decoding when the tab is in the background.
+ * player keeps decoding while the start page shows.
  */
-export function StreamView({ stream, fullscreen, onToggleFullscreen, onStop }: Props) {
+export function StreamView({ stream, fullscreen, onToggleFullscreen, onStop, onHome }: Props) {
   useLanguage();
   // The button that was clicked would keep focus, and with it the full-screen
   // bar open (it shows while anything in it has focus).
@@ -69,6 +71,11 @@ export function StreamView({ stream, fullscreen, onToggleFullscreen, onStop }: P
 
   const bar = (
     <>
+      {!fullscreen && (
+        <button className="quiet" onClick={onHome} title={t('Start (Strg+0)')}>
+          <Icon name="home" size={15} /> {t('Start')}
+        </button>
+      )}
       <span className="stream-title">
         <Icon name={streamIcon(stream)} size={17} />
         <b>{stream.name}</b>
