@@ -14,10 +14,20 @@
 //! | 9..17 | presentation time, µs        |
 //! | 17..  | H.264 access unit, Annex B   |
 //!
+//! Decoded pictures (Miracast's) go their own way, see `frames.rs`; where
+//! they have to take the channel, flags are 2 and the message goes on:
+//!
+//! | bytes  | field                       |
+//! | ------ | --------------------------- |
+//! | 17..21 | width                       |
+//! | 21..25 | height                      |
+//! | 25..   | the picture, NV12           |
+//!
 //! The hub also keeps each stream's frames since its last key frame, so a
 //! page that (re)subscribes — after a reload, or once the window first shows
 //! — can start decoding at once instead of waiting for the sender's next key
 //! frame, which an iPhone showing a still screen may not send for minutes.
+//! Of decoded pictures it keeps the last one.
 //!
 //! One device mirrors at a time: a stream that starts while another runs
 //! takes its place, as on an Apple TV, and the hub asks for the old one to
@@ -30,7 +40,9 @@ use parking_lot::Mutex;
 use serde::Serialize;
 use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::{AppHandle, Emitter};
-use uwumirror_core::{AudioStatus, StreamEvent, StreamInfo, StreamKind, VideoPacket};
+use uwumirror_core::{AudioStatus, RawFrame, StreamEvent, StreamInfo, StreamKind, VideoPacket};
+
+use crate::frames::FrameOut;
 
 /// Frames kept per stream for a late subscriber, at most.
 const MAX_CACHED_FRAMES: usize = 600;
@@ -109,6 +121,9 @@ pub struct Hub {
     app: AppHandle,
     streams: Mutex<HashMap<u64, StreamState>>,
     caches: Mutex<HashMap<u64, Cache>>,
+    /// The last decoded picture of each stream that sends them.
+    last_frames: Mutex<HashMap<u64, RawFrame>>,
+    frames: Arc<FrameOut>,
     video: Mutex<Option<Channel<InvokeResponseBody>>>,
     /// Told when a stream ends, e.g. so the Android side forgets its mirror.
     on_end: Mutex<Vec<EndCallback>>,
@@ -119,9 +134,11 @@ pub struct Hub {
 impl Hub {
     pub fn new(app: AppHandle) -> Arc<Self> {
         Arc::new(Self {
+            frames: Arc::new(FrameOut::new(app.clone())),
             app,
             streams: Mutex::new(HashMap::new()),
             caches: Mutex::new(HashMap::new()),
+            last_frames: Mutex::new(HashMap::new()),
             video: Mutex::new(None),
             on_end: Mutex::new(Vec::new()),
             on_replace: Mutex::new(None),
@@ -149,7 +166,29 @@ impl Hub {
                 let _ = channel.send(InvokeResponseBody::Raw(encode_video(*id, packet)));
             }
         }
+        self.frames.reset();
+        for (id, frame) in self.last_frames.lock().iter() {
+            self.frames.send(*id, frame, Some(&channel));
+        }
         *self.video.lock() = Some(channel);
+    }
+
+    /// The page drew a picture that came through the channel.
+    pub fn frame_done(&self) {
+        self.frames.done();
+    }
+
+    /// Notes that stream `id` sends again, if it was paused.
+    fn resume(&self, id: u64) {
+        let resumed = {
+            let mut streams = self.streams.lock();
+            streams
+                .get_mut(&id)
+                .is_some_and(|s| std::mem::replace(&mut s.paused, false))
+        };
+        if resumed {
+            self.update(id, |_| {});
+        }
     }
 
     fn emit(&self, message: Message<'_>) {
@@ -205,22 +244,23 @@ impl Hub {
             StreamEvent::VideoPaused { id } => self.update(id, |s| s.paused = true),
             StreamEvent::Audio { id, status } => self.update(id, |s| s.audio = Some(status)),
             StreamEvent::Video { id, packet } => {
-                let resumed = {
-                    let mut streams = self.streams.lock();
-                    streams
-                        .get_mut(&id)
-                        .is_some_and(|s| std::mem::replace(&mut s.paused, false))
-                };
-                if resumed {
-                    self.update(id, |_| {});
-                }
+                self.resume(id);
                 self.caches.lock().entry(id).or_default().push(&packet);
                 if let Some(channel) = self.video.lock().as_ref() {
                     let _ = channel.send(InvokeResponseBody::Raw(encode_video(id, &packet)));
                 }
             }
+            StreamEvent::Frame { id, frame } => {
+                self.resume(id);
+                {
+                    let video = self.video.lock();
+                    self.frames.send(id, &frame, video.as_ref());
+                }
+                self.last_frames.lock().insert(id, frame);
+            }
             StreamEvent::Ended { id, reason } => {
                 self.caches.lock().remove(&id);
+                self.last_frames.lock().remove(&id);
                 let state = self.streams.lock().remove(&id);
                 if let Some(state) = state {
                     self.emit(Message::Ended {

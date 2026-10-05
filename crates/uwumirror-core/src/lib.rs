@@ -6,12 +6,15 @@
 //! as H.264 access units in Annex B form, it ends. Video is never decoded in
 //! Rust — the page decodes it with the system's own decoder (WebCodecs, or
 //! Media Source as a fallback), which is fast, hardware-backed and carries no
-//! patent baggage for us. Sound is decoded here and played with [`audio`].
+//! patent baggage for us. Miracast is the exception that proves it: Windows
+//! decodes that one itself and hands over pictures, which travel as
+//! [`RawFrame`]s. Sound is decoded here and played with [`audio`].
 
 pub mod audio;
 pub mod decode;
 pub mod stream;
 
 pub use stream::{
-    next_stream_id, AudioStatus, EventSink, StreamEvent, StreamInfo, StreamKind, VideoPacket,
+    next_stream_id, AudioStatus, EventSink, RawFrame, StreamEvent, StreamInfo, StreamKind,
+    VideoPacket,
 };

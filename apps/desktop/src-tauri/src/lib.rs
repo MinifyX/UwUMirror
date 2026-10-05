@@ -1,6 +1,8 @@
-//! UwUMirror's shell: starts the AirPlay receiver and the Android side, hands
-//! their streams to the page (see `hub.rs`), and offers the page its commands.
+//! UwUMirror's shell: starts the AirPlay receiver, the Android side and (on
+//! Windows) the Miracast receiver, hands their streams to the page (see
+//! `hub.rs`), and offers the page its commands.
 
+mod frames;
 mod hub;
 mod log;
 
@@ -12,12 +14,13 @@ use hub::{Hub, StreamState};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use tauri::ipc::{Channel, InvokeResponseBody};
-use tauri::{Manager, RunEvent, State};
+use tauri::{Emitter, Manager, RunEvent, State};
 use tauri_plugin_opener::OpenerExt;
 use tokio::task::AbortHandle;
 use uwumirror_airplay::{Receiver, ReceiverConfig};
 use uwumirror_android::{AdbStatus, Android, Device, MirrorOptions, QrPairing};
 use uwumirror_core::{decode, EventSink};
+use uwumirror_miracast::{MiracastState, MiracastStatus};
 
 /// What the page asks of the AirPlay receiver.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -46,6 +49,22 @@ struct AirplayState {
     error: Option<String>,
 }
 
+/// What the page asks of the Miracast receiver.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MiracastSettings {
+    enabled: bool,
+    audio: bool,
+}
+
+#[derive(Default)]
+struct MiracastSide {
+    receiver: Option<uwumirror_miracast::Receiver>,
+    /// A video file posing as a sender (`UWUMIRROR_PRETEND_MIRACAST`).
+    #[cfg(windows)]
+    pretend: Option<uwumirror_miracast::FilePlayback>,
+}
+
 struct AppState {
     hub: Arc<Hub>,
     sink: EventSink,
@@ -53,6 +72,7 @@ struct AppState {
     airplay: tokio::sync::Mutex<AirplayState>,
     android: Arc<Android>,
     pairing: Mutex<Option<AbortHandle>>,
+    miracast: tokio::sync::Mutex<MiracastSide>,
 }
 
 type Result<T> = std::result::Result<T, String>;
@@ -204,7 +224,78 @@ async fn stop_stream(state: &AppState, id: u64) -> bool {
             return true;
         }
     }
+    {
+        let miracast = state.miracast.lock().await;
+        if miracast.receiver.as_ref().is_some_and(|r| r.end_stream(id)) {
+            return true;
+        }
+        #[cfg(windows)]
+        if miracast.pretend.as_ref().is_some_and(|p| p.end_stream(id)) {
+            return true;
+        }
+    }
     state.android.stop(id)
+}
+
+/// The page drew a picture that came through the video channel.
+#[tauri::command]
+fn frame_done(state: State<'_, AppState>) {
+    state.hub.frame_done();
+}
+
+/// Starts or stops the Miracast receiver to match `settings`. Its later
+/// changes come as `miracast` events. Elsewhere than on Windows, it only
+/// says that Miracast needs Windows.
+#[tauri::command]
+async fn miracast_apply(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    settings: MiracastSettings,
+) -> Result<MiracastStatus> {
+    let mut miracast = state.miracast.lock().await;
+    if let Some(receiver) = &miracast.receiver {
+        if settings.enabled {
+            receiver.set_audio(settings.audio);
+            return Ok(receiver.status());
+        }
+        // Hanging up and closing the session waits for Windows a moment.
+        let old = miracast.receiver.take();
+        let _ = tokio::task::spawn_blocking(move || drop(old)).await;
+    }
+    if !settings.enabled {
+        return tokio::task::spawn_blocking(uwumirror_miracast::probe)
+            .await
+            .map_err(text);
+    }
+    let sink = state.sink.clone();
+    let on_status: uwumirror_miracast::StatusSink = Arc::new(move |status| {
+        if let Err(error) = app.emit("miracast", status) {
+            tracing::warn!(%error, "Miracast status to the page");
+        }
+    });
+    let config = uwumirror_miracast::ReceiverConfig {
+        audio: settings.audio,
+    };
+    let started = tokio::task::spawn_blocking(move || {
+        uwumirror_miracast::Receiver::start(config, sink, on_status)
+    })
+    .await
+    .map_err(text)?;
+    Ok(match started {
+        Ok(receiver) => {
+            let status = receiver.status();
+            miracast.receiver = Some(receiver);
+            status
+        }
+        Err(uwumirror_miracast::Error::Unsupported) => MiracastStatus::unsupported(),
+        Err(error) => {
+            tracing::warn!(%error, "Miracast receiver");
+            MiracastStatus {
+                error: Some(error.to_string()),
+                ..MiracastStatus::new(MiracastState::Failed, String::new())
+            }
+        }
+    })
 }
 
 #[tauri::command]
@@ -380,7 +471,26 @@ pub fn run() {
                 }),
                 android,
                 pairing: Mutex::new(None),
+                miracast: tokio::sync::Mutex::new(MiracastSide::default()),
             });
+            // A video file as a Miracast sender, for trying the way decoded
+            // pictures take into the page without a phone.
+            #[cfg(windows)]
+            if let Some(path) = std::env::var_os("UWUMIRROR_PRETEND_MIRACAST") {
+                let state = app.state::<AppState>();
+                match uwumirror_miracast::FilePlayback::start(
+                    std::path::Path::new(&path),
+                    state.sink.clone(),
+                    true,
+                    true,
+                ) {
+                    Ok(pretend) => {
+                        tauri::async_runtime::block_on(state.miracast.lock()).pretend =
+                            Some(pretend)
+                    }
+                    Err(error) => tracing::warn!(%error, "pretend Miracast sender"),
+                }
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -402,6 +512,8 @@ pub fn run() {
             android_mirror,
             android_download_adb,
             android_choose_adb,
+            miracast_apply,
+            frame_done,
             open_link,
             log_detail,
             open_log_folder,
@@ -418,6 +530,10 @@ pub fn run() {
                 .receiver
                 .take();
             drop(receiver);
+            // Hang up on a Miracast sender and give Windows its receiver back.
+            let miracast =
+                std::mem::take(&mut *tauri::async_runtime::block_on(state.miracast.lock()));
+            drop(miracast);
         }
     });
 }

@@ -15,6 +15,9 @@ pub enum StreamKind {
     AirplayAudio,
     /// An Android phone, through scrcpy's server over adb.
     Android,
+    /// Miracast ("Smart View", "Cast", Win+K) through Windows' own receiver;
+    /// its picture arrives decoded, as [`RawFrame`]s.
+    Miracast,
 }
 
 /// What the app shows about a stream while it runs.
@@ -56,6 +59,27 @@ pub struct VideoPacket {
     pub pts_us: u64,
 }
 
+/// One decoded picture, from a source whose video can't be had as H.264.
+///
+/// NV12: `width × height` bytes of luma, then `width × height / 2` bytes of
+/// interleaved chroma at half the resolution both ways. Width and height are
+/// even. The page hands it to WebCodecs' `VideoFrame` as it is.
+#[derive(Debug, Clone)]
+pub struct RawFrame {
+    pub width: u32,
+    pub height: u32,
+    /// Presentation time in microseconds, on the source's own clock.
+    pub pts_us: u64,
+    pub data: Vec<u8>,
+}
+
+impl RawFrame {
+    /// The bytes an NV12 picture of this size takes.
+    pub fn nv12_len(width: u32, height: u32) -> usize {
+        width as usize * height as usize * 3 / 2
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum StreamEvent {
     Started(StreamInfo),
@@ -68,6 +92,11 @@ pub enum StreamEvent {
     Video {
         id: u64,
         packet: VideoPacket,
+    },
+    /// A decoded picture, in place of `Video` (Miracast).
+    Frame {
+        id: u64,
+        frame: RawFrame,
     },
     /// The device paused its picture (screen locked, app in the background).
     VideoPaused {
@@ -90,6 +119,7 @@ impl StreamEvent {
             StreamEvent::Started(info) => info.id,
             StreamEvent::VideoSize { id, .. }
             | StreamEvent::Video { id, .. }
+            | StreamEvent::Frame { id, .. }
             | StreamEvent::VideoPaused { id }
             | StreamEvent::Audio { id, .. }
             | StreamEvent::Ended { id, .. } => *id,

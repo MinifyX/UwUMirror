@@ -18,6 +18,7 @@ tauri-build = { version = "2", features = [] }
 uwumirror-airplay.workspace = true
 uwumirror-android.workspace = true
 uwumirror-core.workspace = true
+uwumirror-miracast.workspace = true
 
 parking_lot.workspace = true
 serde.workspace = true
@@ -27,3 +28,9 @@ tauri-plugin-opener = "2"
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Shared buffers, for Miracast's decoded pictures (see `frames.rs`): the
+# versions Tauri's own WebView2 binding uses.
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
+windows-core = "0.62"

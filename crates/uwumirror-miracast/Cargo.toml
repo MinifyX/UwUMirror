@@ -1,0 +1,40 @@
+[package]
+name = "uwumirror-miracast"
+description = "UwUMirror's Miracast receiver, through Windows' own"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+uwumirror-core.workspace = true
+
+parking_lot.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+# Windows has a Miracast receiver of its own (Windows.Media.Miracast), and
+# Media Foundation behind it decodes the picture; everywhere else this crate
+# only says that Miracast needs Windows. The `windows` version is the one
+# webview2-com (Tauri) pulls in already.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+  "ApplicationModel_Core",
+  "Foundation",
+  "Graphics_DirectX_Direct3D11",
+  "Media_Core",
+  "Media_Miracast",
+  "Media_Playback",
+  "Win32_Foundation",
+  "Win32_Graphics_Direct3D",
+  "Win32_Graphics_Direct3D11",
+  "Win32_Graphics_Dxgi",
+  "Win32_Graphics_Dxgi_Common",
+  "Win32_System_WinRT",
+  "Win32_System_WinRT_Direct3D11",
+] }
