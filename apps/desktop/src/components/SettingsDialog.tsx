@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { AdbStatus, AirplayStatus, AppInfo, CastStatus, Device } from '../lib/api';
 import { N_, t, useLanguage } from '../lib/i18n';
-import { platform } from '../lib/platform';
+import { platform, systemDoesAirplay } from '../lib/platform';
 import { useSettings } from '../lib/settings';
 import type { Stream } from '../lib/streams';
 import { Icon, type IconName } from './Icon';
@@ -13,9 +13,16 @@ import { Airplay, Cast, Miracast } from './settings/Receivers';
 
 export type SettingsSection = 'general' | 'airplay' | 'miracast' | 'android' | 'cast' | 'about';
 
-const SECTIONS: { id: SettingsSection; label: string; icon: IconName; windowsOnly?: boolean }[] = [
+const SECTIONS: {
+  id: SettingsSection;
+  label: string;
+  icon: IconName;
+  windowsOnly?: boolean;
+  /** Left out where the system receives AirPlay itself (a Mac). */
+  notWithSystemAirplay?: boolean;
+}[] = [
   { id: 'general', label: N_('Allgemein'), icon: 'sliders' },
-  { id: 'airplay', label: N_('AirPlay'), icon: 'phone' },
+  { id: 'airplay', label: N_('AirPlay'), icon: 'phone', notWithSystemAirplay: true },
   { id: 'miracast', label: N_('Miracast'), icon: 'cast', windowsOnly: true },
   { id: 'android', label: N_('Android (Debugging)'), icon: 'android' },
   { id: 'cast', label: N_('Andere Computer'), icon: 'monitor' },
@@ -50,7 +57,11 @@ export function SettingsDialog(props: Props) {
   useLanguage();
   const settings = useSettings();
   const [section, setSection] = useState<SettingsSection>(props.section);
-  const sections = SECTIONS.filter((item) => !item.windowsOnly || platform() === 'windows');
+  const sections = SECTIONS.filter(
+    (item) =>
+      (!item.windowsOnly || platform() === 'windows') &&
+      !(item.notWithSystemAirplay && systemDoesAirplay()),
+  );
   return (
     <Modal title={t('Einstellungen')} size="wide" onCancel={props.onClose}>
       <button

@@ -53,7 +53,13 @@ Android-Handys. Also: ich.
 
 ## 3. Was es kann (0.1.0-beta.1)
 
-**AirPlay (iPhone, iPad, Mac)**
+**AirPlay (iPhone, iPad, Mac; unter Windows und Linux)**
+
+Ein Mac kann AirPlay seit macOS 12 selbst empfangen (Systemeinstellungen →
+AirDrop & Handoff → „AirPlay-Empfänger“), auf demselben Port 7000. Dort lässt
+UwUMirror AirPlay dem System: kein Empfänger, keine Karte, keine Einstellungen,
+nur ein Hinweis auf der Startseite. Der Name für „Senden“ steht dann unter
+„Andere Computer“.
 
 - Erscheint unter „Bildschirmsynchronisierung“ wie ein Apple TV (Bonjour:
   `_airplay._tcp` und `_raop._tcp`), Name einstellbar, Standard „UwUMirror

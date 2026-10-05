@@ -4,7 +4,7 @@ import { deviceName } from '../lib/android';
 import { streamIcon, streamSource } from '../lib/devices';
 import { t, useLanguage } from '../lib/i18n';
 import { useMiracast } from '../lib/miracast';
-import { platform } from '../lib/platform';
+import { platform, systemDoesAirplay } from '../lib/platform';
 import { useSettings } from '../lib/settings';
 import type { Stream } from '../lib/streams';
 import { Icon, type IconName } from './Icon';
@@ -157,24 +157,41 @@ export function Home(props: Props) {
             {t('So spiegelst du hierher')}
           </h2>
           <ul className="ways">
-            <Way
-              icon="phone"
-              title={t('iPhone, iPad & Mac')}
-              via="AirPlay"
-              state={airplay}
-              section="airplay"
-              onSettings={onSettings}
-            >
-              <p className="way-how">
-                {t('Kontrollzentrum → „Bildschirmsynchronisierung“ → „{name}“.', { name })}
-              </p>
-              {settings.airplayEnabled && props.ffmpeg === null && (
-                <button className="way-note" onClick={() => onSettings('airplay')}>
-                  <Icon name="volumeOff" size={14} />
-                  {t('Ohne Ton: FFmpeg fehlt')}
-                </button>
-              )}
-            </Way>
+            {systemDoesAirplay() ? (
+              // The Mac's own receiver, not ours: only where to switch it on.
+              <Way
+                icon="phone"
+                title={t('iPhone & iPad')}
+                via="AirPlay"
+                section="general"
+                onSettings={onSettings}
+              >
+                <p className="way-how">
+                  {t(
+                    'Das kann dein Mac selbst: Systemeinstellungen → Allgemein → AirDrop & Handoff → „AirPlay-Empfänger“.',
+                  )}
+                </p>
+              </Way>
+            ) : (
+              <Way
+                icon="phone"
+                title={t('iPhone, iPad & Mac')}
+                via="AirPlay"
+                state={airplay}
+                section="airplay"
+                onSettings={onSettings}
+              >
+                <p className="way-how">
+                  {t('Kontrollzentrum → „Bildschirmsynchronisierung“ → „{name}“.', { name })}
+                </p>
+                {settings.airplayEnabled && props.ffmpeg === null && (
+                  <button className="way-note" onClick={() => onSettings('airplay')}>
+                    <Icon name="volumeOff" size={14} />
+                    {t('Ohne Ton: FFmpeg fehlt')}
+                  </button>
+                )}
+              </Way>
+            )}
 
             {hasMiracast && (
               <Way

@@ -14,7 +14,7 @@ import {
 import { useAdb, useAdbDevices } from './lib/android';
 import { t, useLanguage } from './lib/i18n';
 import { applyMiracast } from './lib/miracast';
-import { platform } from './lib/platform';
+import { platform, systemDoesAirplay } from './lib/platform';
 import { getSettings, RESOLUTIONS, receiverName, useSettings } from './lib/settings';
 import { onStreamEnded, onStreamStarted, startStreams, useStreams } from './lib/streams';
 import { Home } from './components/Home';
@@ -110,14 +110,15 @@ export function App() {
     void api.logDetail(settings.detailedLog).catch(() => undefined);
   }, [settings.detailedLog]);
 
-  // The AirPlay receiver follows the settings.
+  // The AirPlay receiver follows the settings; a Mac has its own.
+  const airplayEnabled = settings.airplayEnabled && !systemDoesAirplay();
   useEffect(() => {
-    if (settings.airplayEnabled && !computer) return; // the name isn't known yet
+    if (airplayEnabled && !computer) return; // the name isn't known yet
     const [width, height] = RESOLUTIONS[settings.airplayResolution];
     let stale = false;
     void api
       .airplayApply({
-        enabled: settings.airplayEnabled,
+        enabled: airplayEnabled,
         name,
         width,
         height,

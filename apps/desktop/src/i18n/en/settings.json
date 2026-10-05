@@ -79,5 +79,7 @@
   "Offen fürs lokale Netz, wie AirPlay. Der Name ist derselbe wie bei AirPlay.": "Open to the local network, like AirPlay. The name is the same as for AirPlay.",
   "So sendet ein anderer Computer hierher": "How another computer sends here",
   "Windows-PCs: Dort oben auf „Senden“ klicken und „{name}“ wählen – fertig.": "Windows PCs: click “Send” at the top there and pick “{name}” – done.",
-  "Miracast": "Miracast"
+  "Miracast": "Miracast",
+  "Offen fürs lokale Netz.": "Open to the local network.",
+  "So heißt dieser Computer, wenn ein anderer hierher senden will.": "What other computers see this one as when they send here."
 }

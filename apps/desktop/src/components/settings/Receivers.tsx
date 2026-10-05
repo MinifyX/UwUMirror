@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, errorText, type AirplayStatus, type CastStatus } from '../../lib/api';
 import { t } from '../../lib/i18n';
 import { useMiracast } from '../../lib/miracast';
-import { platform } from '../../lib/platform';
+import { platform, systemDoesAirplay } from '../../lib/platform';
 import { receiverName, updateSettings, type Settings } from '../../lib/settings';
 import { Icon } from '../Icon';
 import { airplayState, castState, miracastState, StatusLine } from '../Status';
@@ -50,7 +50,6 @@ export function Airplay({
   ffmpeg: number | null | undefined;
   onRecheckFfmpeg: () => Promise<void>;
 }) {
-  const [name, setName] = useState(settings.receiverName);
   const [checking, setChecking] = useState(false);
   const shown = receiverName(settings, computer);
   return (
@@ -69,27 +68,11 @@ export function Airplay({
           label={t('AirPlay-Empfang')}
         />
       </Row>
-      <Row
-        label={t('Name')}
+      <NameRow
+        settings={settings}
+        computer={computer}
         description={t('So heißt dieser Computer in der Liste auf dem iPhone.')}
-      >
-        <form
-          className="inline-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            updateSettings({ receiverName: name });
-          }}
-        >
-          <input
-            className="input"
-            value={name}
-            maxLength={60}
-            placeholder={receiverName({ ...settings, receiverName: '' }, computer)}
-            onChange={(event) => setName(event.target.value)}
-            onBlur={() => updateSettings({ receiverName: name })}
-          />
-        </form>
-      </Row>
+      />
       <Row
         label={t('Auflösung')}
         description={t(
@@ -259,9 +242,11 @@ export function Cast({
       <StatusLine state={castState(settings.castEnabled, status, name)} />
       <Row
         label={t('Von anderen Computern empfangen')}
-        description={t(
-          'Offen fürs lokale Netz, wie AirPlay. Der Name ist derselbe wie bei AirPlay.',
-        )}
+        description={
+          systemDoesAirplay()
+            ? t('Offen fürs lokale Netz.')
+            : t('Offen fürs lokale Netz, wie AirPlay. Der Name ist derselbe wie bei AirPlay.')
+        }
       >
         <Toggle
           checked={settings.castEnabled}
@@ -269,6 +254,13 @@ export function Cast({
           label={t('Von anderen Computern empfangen')}
         />
       </Row>
+      {systemDoesAirplay() && (
+        <NameRow
+          settings={settings}
+          computer={computer}
+          description={t('So heißt dieser Computer, wenn ein anderer hierher senden will.')}
+        />
+      )}
       <details className="how-to">
         <summary>{t('So sendet ein anderer Computer hierher')}</summary>
         <ol className="steps">
@@ -336,5 +328,38 @@ function TrustedDevices() {
         </p>
       )}
     </>
+  );
+}
+
+/** The name devices see this computer by: AirPlay's list, other computers'. */
+function NameRow({
+  settings,
+  computer,
+  description,
+}: {
+  settings: Settings;
+  computer: string;
+  description: string;
+}) {
+  const [name, setName] = useState(settings.receiverName);
+  return (
+    <Row label={t('Name')} description={description}>
+      <form
+        className="inline-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          updateSettings({ receiverName: name });
+        }}
+      >
+        <input
+          className="input"
+          value={name}
+          maxLength={60}
+          placeholder={receiverName({ ...settings, receiverName: '' }, computer)}
+          onChange={(event) => setName(event.target.value)}
+          onBlur={() => updateSettings({ receiverName: name })}
+        />
+      </form>
+    </Row>
   );
 }

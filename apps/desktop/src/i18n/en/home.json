@@ -4,7 +4,6 @@
   "Spiegelt gerade": "Mirroring now",
   "Zeigen": "Show",
   "Beenden": "Stop",
-
   "iPhone, iPad & Mac": "iPhone, iPad & Mac",
   "AirPlay-Empfang": "AirPlay receiver",
   "Aus – iPhones sehen UwUMirror gerade nicht.": "Off – iPhones can't see UwUMirror right now.",
@@ -22,7 +21,6 @@
   "Sucht…": "Looking…",
   "Erneut nach FFmpeg suchen": "Look for FFmpeg again",
   "Taucht UwUMirror nicht auf? Die Firewall muss eingehende Verbindungen erlauben (TCP {port} und mDNS, UDP 5353).": "UwUMirror doesn't show up? The firewall has to allow incoming connections (TCP {port} and mDNS, UDP 5353).",
-
   "Über kabelloses Debugging oder USB": "Over wireless debugging or USB",
   "Handy koppeln": "Pair a phone",
   "Sucht adb…": "Looking for adb…",
@@ -42,7 +40,6 @@
   "Einstellungen → Über das Telefon → sieben Mal auf „Build-Nummer“ tippen. Das schaltet die Entwickleroptionen frei.": "Settings → About phone → tap “Build number” seven times. That unlocks the developer options.",
   "Einstellungen → System → Entwickleroptionen → „Kabelloses Debugging“ einschalten (ab Android 11). Ältere Handys: „USB-Debugging“ und ein Kabel.": "Settings → System → Developer options → turn on “Wireless debugging” (Android 11 and newer). Older phones: “USB debugging” and a cable.",
   "Hier auf „Handy koppeln“ und auf dem Handy „Gerät über QR-Code koppeln“.": "Click “Pair a phone” here, and “Pair device with QR code” on the phone.",
-
   "Android & Windows-PCs": "Android & Windows PCs",
   "Miracast empfangen": "Receive Miracast",
   "Aus – Handys und PCs sehen UwUMirror gerade nicht.": "Off – phones and PCs can't see UwUMirror right now.",
@@ -63,7 +60,6 @@
   "Aus – andere Computer sehen UwUMirror gerade nicht.": "Off – other computers can't see UwUMirror right now.",
   "Der Empfang konnte nicht starten: {error}": "Receiving couldn't start: {error}",
   "Auf dem anderen Computer läuft UwUMirror, im selben Netzwerk wie dieser.": "The other computer runs UwUMirror, on the same network as this one.",
-
   "Diesen Bildschirm senden": "Send this screen",
   "An UwUMirror auf einem anderen Computer": "To UwUMirror on another computer",
   "An „{name}“ lässt sich nicht senden: {error}": "Can't send to “{name}”: {error}",
@@ -77,7 +73,6 @@
   "UwUMirror {version} – zu alt oder zu neu für diesen": "UwUMirror {version} – too old or too new for this one",
   "Senden": "Send",
   "Gesendet wird der Hauptbildschirm mit Mauszeiger und Ton. Währenddessen zeigt Windows einen gelben Rahmen um den Bildschirm.": "What's sent is the main screen, with the pointer and sound. Meanwhile, Windows shows a yellow frame around the screen.",
-
   "Abbrechen": "Cancel",
   "Fertig": "Done",
   "Art der Kopplung": "How to pair",
@@ -100,7 +95,6 @@
   "Für Handys, die schon gekoppelt sind (die Adresse steht oben unter „Kabelloses Debugging“) oder mit adb tcpip lauschen.": "For phones that are already paired (the address is at the top of “Wireless debugging”) or listen with adb tcpip.",
   "Verbindet…": "Connecting…",
   "Verbinden": "Connect",
-
   "Diesen Bildschirm an einen anderen Computer senden": "Send this screen to another computer",
   "In den Einstellungen einschalten": "Turn on in Settings",
   "Mehr dazu in den Einstellungen": "More in Settings",
@@ -118,5 +112,7 @@
   "Gekoppelte Handys": "Paired phones",
   "Dort in UwUMirror oben auf „Senden“ und „{name}“ wählen (Windows).": "In UwUMirror there, click “Send” at the top and pick “{name}” (Windows).",
   "Bereit": "Ready",
-  "Problem": "Problem"
+  "Problem": "Problem",
+  "iPhone & iPad": "iPhone & iPad",
+  "Das kann dein Mac selbst: Systemeinstellungen → Allgemein → AirDrop & Handoff → „AirPlay-Empfänger“.": "Your Mac does that itself: System Settings → General → AirDrop & Handoff → “AirPlay Receiver”."
 }

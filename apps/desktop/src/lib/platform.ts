@@ -40,3 +40,13 @@ export function shortcut(key: string): string {
 export function fullscreenShortcut(): string {
   return platform() === 'macos' ? '⌃⌘F' : 'F11';
 }
+
+/**
+ * A Mac receives AirPlay itself (System Settings → General → AirDrop &
+ * Handoff → AirPlay Receiver, since macOS 12), on the very port UwUMirror's
+ * receiver would take. So there UwUMirror leaves AirPlay to the system and
+ * shows neither its receiver nor its settings.
+ */
+export function systemDoesAirplay(): boolean {
+  return platform() === 'macos';
+}

@@ -49,7 +49,8 @@ simple on purpose: open it, and it is ready.
 - **iPhone, iPad and Mac over AirPlay.** UwUMirror shows up under **Screen
   Mirroring** in the Control Center, like an Apple TV. Pick it, and your
   screen is here — with sound. AirPlay audio from Music and Podcasts works
-  too.
+  too. (On Windows and Linux. A Mac receives AirPlay itself since macOS 12,
+  so UwUMirror leaves that to it there.)
 - **Android phones and Windows PCs over Miracast** (UwUMirror on Windows).
   Open "Smart View", "Screen mirroring" or "Cast" on the phone (Win+K on a
   PC) and pick this computer — no pairing, no developer options. UwUMirror
