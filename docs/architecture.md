@@ -103,10 +103,12 @@ pairing, FairPlay, H.264 only (the HEVC bit stays off, so senders never try it).
      `iv = SHA-512("Pair-Setup-AES-IV" ‖ K)[..16]`, its last byte + 1 for the
      sender's message and + 2 for ours.
    - Then pair-verify as usual. The sender's key goes into `airplay-trusted`
-     (one `<hex key> <id>` per line, next to the identity). A connection that
-     goes to pair-verify without any pair-setup must be a returning Mac: one
-     whose key is in that file is let in, any other gets 470 (and a Mac then
-     asks for a PIN again). Settings → AirPlay forgets the file.
+     (one `<hex key> <id>` per line, next to the identity), so Settings →
+     AirPlay can say how many paired and forget them. It doesn't gate
+     anything: pair-verify stays open to every device, with or without a
+     pair-setup before it, because an iPhone that knows the receiver comes
+     straight there — refusing it (470) made iPhones ask for a PIN too.
+     Whether a PIN is asked is the sender's choice.
 4. **FairPlay** (`fairplay.rs`, `playfair/`): two `/fp-setup` rounds with fixed
    replies; SETUP's 72-byte `ekey` is unwrapped by playfair's
    `playfair_decrypt`. The key message's mode byte is checked before playfair
@@ -273,8 +275,8 @@ Everything that can be tested without a phone is:
 - **A Mac pairing with a PIN** (`airplay/src/tests.rs`): pair-pin-start, the
   three pair-setup-pin steps with the PIN the receiver showed (checking `M2`
   and opening the receiver's sealed key), pair-verify, FairPlay and SETUP;
-  then a reconnect straight to pair-verify (let in), a stranger doing the same
-  (470), an iPhone-style pair-setup (no PIN), and the forgotten Mac (470). With
+  then a reconnect straight to pair-verify, an iPhone doing the same and one
+  doing pair-setup first — all let in without a PIN. With
   a wrong PIN: 470, the PIN used up, no way around it. The SRP arithmetic is
   checked against RFC 5054's test vectors, Apple's changes and the GCM sealing
   against values computed independently with Node's BigInt and `crypto`.

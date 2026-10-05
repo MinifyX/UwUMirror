@@ -404,6 +404,7 @@ impl TrustedDevices {
         }
     }
 
+    #[cfg(test)]
     pub fn contains(&self, key: &[u8; 32]) -> bool {
         self.devices.iter().any(|device| &device.key == key)
     }

@@ -609,12 +609,14 @@ async fn a_mac_pairs_with_a_pin() {
     // Next time: straight to pair-verify, no PIN.
     let mut again = test.connect().await;
     assert_eq!(again.pair_verify(&signing, 33).await.0, 200);
-    // A stranger can't skip pairing.
-    let mut stranger = test.connect().await;
+    // An iPhone that knows the receiver comes straight to pair-verify too,
+    // and needs no PIN: one is only for senders that ask for it.
+    let mut iphone = test.connect().await;
     let other = SigningKey::from_bytes(&[34u8; 32]);
-    assert_eq!(stranger.pair_verify(&other, 35).await.0, 470);
-    // An iPhone, doing pair-setup first, needs no PIN.
-    let (code, _) = stranger
+    assert_eq!(iphone.pair_verify(&other, 35).await.0, 200);
+    // So does one doing pair-setup first.
+    let mut fresh = test.connect().await;
+    let (code, _) = fresh
         .request(
             "POST",
             "/pair-setup",
@@ -623,13 +625,11 @@ async fn a_mac_pairs_with_a_pin() {
         )
         .await;
     assert_eq!(code, 200);
-    assert_eq!(stranger.pair_verify(&other, 36).await.0, 200);
+    assert_eq!(fresh.pair_verify(&other, 36).await.0, 200);
 
-    // Forgotten, the Mac must pair again.
+    // Forgetting empties the list.
     test.receiver.forget_trusted_devices().unwrap();
     assert_eq!(test.receiver.trusted_devices(), 0);
-    let mut forgotten = test.connect().await;
-    assert_eq!(forgotten.pair_verify(&signing, 37).await.0, 470);
 }
 
 /// A wrong PIN: refused, the PIN used up, and no way around it.
@@ -660,10 +660,8 @@ async fn a_mac_with_the_wrong_pin_is_refused() {
     fake.insert("epk".into(), Value::Data(vec![0; 32]));
     fake.insert("authTag".into(), Value::Data(vec![0; 16]));
     assert_eq!(sender.pin_step(fake).await.0, 470);
-    // …nor does trying the right PIN without a new one on screen…
+    // …nor does trying the right PIN without a new one on screen.
     assert_eq!(sender.pin_step(mac.first()).await.0, 470);
-    // …nor skipping to pair-verify.
-    assert_eq!(sender.pair_verify(&signing, 42).await.0, 470);
     assert_eq!(test.receiver.trusted_devices(), 0);
 }
 

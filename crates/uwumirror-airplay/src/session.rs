@@ -102,9 +102,6 @@ pub struct Connection {
     fairplay: FairPlay,
     verify: PairVerify,
     pin: PinSetup,
-    /// This connection did pair-setup (with or without a PIN); without it,
-    /// pair-verify is for devices that paired with a PIN before.
-    set_up: bool,
     session_key: Option<[u8; 16]>,
     iv: Option<[u8; 16]>,
     stream: Option<Stream>,
@@ -144,7 +141,6 @@ impl Connection {
             fairplay: FairPlay::default(),
             verify: PairVerify::default(),
             pin: PinSetup::default(),
-            set_up: false,
             session_key: None,
             iv: None,
             stream: None,
@@ -195,15 +191,13 @@ impl Connection {
                 ))
             }
             ("POST", "/pair-setup") if request.body.len() == 32 => {
-                self.set_up = true;
                 Response::ok().octets(self.shared.identity.public_key().to_vec())
             }
             ("POST", "/pair-pin-start") => self.pair_pin_start(),
             ("POST", "/pair-setup-pin") => self.pair_setup_pin(request),
-            ("POST", "/pair-verify") if !self.may_verify(&request.body) => {
-                tracing::info!(peer = %self.peer, "pair-verify from a device that must pair first");
-                Response::status(470, "Connection Authorization Required")
-            }
+            // Open to every device in the network, as before the PIN: an
+            // iPhone that knows the receiver comes straight here, without
+            // pair-setup. A PIN is only for senders that ask for one.
             ("POST", "/pair-verify") => {
                 match self.verify.step(&self.shared.identity, &request.body) {
                     Ok(reply) => Response::ok().octets(reply),
@@ -309,7 +303,6 @@ impl Connection {
                 if let Err(error) = self.shared.trusted.lock().add(key, &user) {
                     tracing::warn!(%error, "remembering a trusted AirPlay device");
                 }
-                self.set_up = true;
                 self.pairing_event(PairingEvent::Paired {
                     address: self.address(),
                     device: user,
@@ -325,20 +318,6 @@ impl Connection {
                 refused()
             }
         }
-    }
-
-    /// Whether this `pair-verify` may go ahead. After pair-setup on this
-    /// connection, always — that is how iPhones come. Without it, only a
-    /// device that paired with a PIN before: Macs remember the receiver and
-    /// skip pair-setup next time, and anyone else doing that is told to pair
-    /// (470), which makes a Mac ask for a PIN again.
-    fn may_verify(&self, body: &[u8]) -> bool {
-        if self.set_up || body.first() != Some(&1) || body.len() != 4 + 32 + 32 {
-            return true;
-        }
-        let mut key = [0u8; 32];
-        key.copy_from_slice(&body[36..68]);
-        self.shared.trusted.lock().contains(&key)
     }
 
     fn set_parameter(&mut self, request: &Request) {
