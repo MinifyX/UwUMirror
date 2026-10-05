@@ -20,6 +20,7 @@ use uwumirror_core::{
 };
 
 use crate::discovery::Announcement;
+use crate::latency;
 use crate::protocol::{
     Hello, Message, Welcome, WelcomeStatus, AUDIO_CHANNELS, AUDIO_RATE, VERSION,
 };
@@ -33,6 +34,8 @@ const IDLE: Duration = Duration::from_secs(15);
 const HELLO_TIMEOUT: Duration = Duration::from_secs(5);
 /// How often a receiver waiting for a key frame asks again.
 const KEY_FRAME_ASK_EVERY: Duration = Duration::from_secs(1);
+/// How often the latency goes into the log.
+const LATENCY_EVERY: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone)]
 pub struct ReceiverConfig {
@@ -251,6 +254,23 @@ async fn serve(
     Ok(())
 }
 
+/// Capture to received, and the bit rate, into the log now and then (the
+/// app's detailed log, or `RUST_LOG=uwumirror_cast=debug`).
+fn log_latency(id: u64, stats: &latency::Stats, over: Duration) {
+    let mbit = stats.bytes as f64 * 8.0 / over.as_secs_f64() / 1e6;
+    match stats.summary() {
+        Some(summary) => {
+            tracing::debug!(id, "UwUCast capture → received: {summary}, {mbit:.1} Mbit/s");
+        }
+        None if stats.implausible > 0 => tracing::debug!(
+            id,
+            "UwUCast: {} frames stamped on a clock too far from ours to tell latency, {mbit:.1} Mbit/s",
+            stats.implausible
+        ),
+        None => {}
+    }
+}
+
 /// The stream's messages until it ends; the reason, if it didn't end well.
 async fn pump(socket: TcpStream, id: u64, audio: bool, sink: &EventSink) -> Option<String> {
     let (mut reader, mut writer) = socket.into_split();
@@ -258,6 +278,8 @@ async fn pump(socket: TcpStream, id: u64, audio: bool, sink: &EventSink) -> Opti
     let mut sound_failed = false;
     let mut started = false;
     let mut asked: Option<Instant> = None;
+    let mut latency = latency::Stats::default();
+    let mut summed = Instant::now();
     loop {
         let message = match tokio::time::timeout(IDLE, Message::read(&mut reader)).await {
             Err(_) => return Some("the sender went silent".into()),
@@ -277,6 +299,12 @@ async fn pump(socket: TcpStream, id: u64, audio: bool, sink: &EventSink) -> Opti
                         let _ = Message::KeyFrameRequest.write(&mut writer).await;
                     }
                     continue;
+                }
+                latency.frame(pts_us, data.len());
+                if summed.elapsed() >= LATENCY_EVERY {
+                    log_latency(id, &latency, summed.elapsed());
+                    latency.clear();
+                    summed = Instant::now();
                 }
                 sink(StreamEvent::Video {
                     id,

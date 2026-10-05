@@ -10,12 +10,12 @@
 
 use std::sync::mpsc;
 use std::thread::JoinHandle;
-use std::time::Instant;
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SizedSample};
 use uwumirror_core::audio::Resampler;
 
+use super::Clock;
 use crate::protocol::{AUDIO_CHANNELS, AUDIO_RATE};
 use crate::sender::Outbox;
 
@@ -26,7 +26,7 @@ pub struct Loopback {
 }
 
 impl Loopback {
-    pub fn start(outbox: Outbox, clock: Instant) -> Result<Self, String> {
+    pub fn start(outbox: Outbox, clock: Clock) -> Result<Self, String> {
         let (ready_tx, ready_rx) = mpsc::channel::<Result<(), String>>();
         let (stop_tx, stop_rx) = mpsc::channel::<()>();
         let thread = std::thread::Builder::new()
@@ -65,7 +65,7 @@ impl Drop for Loopback {
     }
 }
 
-fn record(outbox: Outbox, clock: Instant) -> Result<cpal::Stream, String> {
+fn record(outbox: Outbox, clock: Clock) -> Result<cpal::Stream, String> {
     let device = cpal::default_host()
         .default_output_device()
         .ok_or("no sound output device")?;
@@ -97,7 +97,7 @@ fn input<T: SizedSample>(
     device: &cpal::Device,
     config: &cpal::StreamConfig,
     outbox: Outbox,
-    clock: Instant,
+    clock: Clock,
 ) -> Result<cpal::Stream, String>
 where
     f32: FromSample<T>,
@@ -121,7 +121,7 @@ where
                     .iter()
                     .map(|&s| (s.clamp(-1.0, 1.0) * 32767.0) as i16)
                     .collect();
-                outbox.audio(clock.elapsed().as_micros() as u64, samples);
+                outbox.audio(clock.wall(clock.now_us()), samples);
             },
             |error| tracing::warn!(%error, "recording what the computer plays"),
             None,
