@@ -163,7 +163,7 @@ export function Airplay({
           <li>{t('„{name}“ auswählen – fertig.', { name: shown })}</li>
         </ol>
       </details>
-      <Firewall port={status?.port ?? 7000} />
+      {status?.running && <Firewall port={status.port ?? 7000} />}
     </>
   );
 }
@@ -279,7 +279,7 @@ export function Cast({
           </li>
         </ol>
       </details>
-      <Firewall port={status?.port ?? 7100} />
+      {status?.running && <Firewall port={status.port ?? 7100} />}
     </>
   );
 }

@@ -638,6 +638,7 @@ button:has(> .icon):not(.icon-button) {
   margin: 2px 0 0;
   font-size: 13px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
   color: var(--uwu-muted);
 }
 
@@ -654,6 +655,33 @@ button:has(> .icon):not(.icon-button) {
 
 .setting-result[data-tone='error'] {
   color: var(--uwu-alarm);
+}
+
+.inline-form {
+  margin: 0;
+}
+
+.input {
+  font: inherit;
+  letter-spacing: inherit;
+  width: 260px;
+  max-width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--uwu-radius-control);
+  border: 1px solid var(--uwu-border);
+  background: var(--uwu-canvas);
+  color: var(--uwu-ink);
+}
+
+.input::placeholder {
+  color: var(--uwu-faint);
+}
+
+.input:focus-visible {
+  outline: 0;
+  border-color: var(--uwu-pink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--uwu-pink) 30%, transparent);
+  border-radius: var(--uwu-radius-control);
 }
 
 .select {
