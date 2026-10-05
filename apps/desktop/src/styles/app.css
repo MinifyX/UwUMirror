@@ -14,6 +14,7 @@ body {
   color: var(--uwu-ink);
   font-family: var(--uwu-font);
   font-size: 14px;
+  letter-spacing: var(--uwu-tracking);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
@@ -84,7 +85,12 @@ button {
   border: 1px solid var(--uwu-border);
   background: var(--uwu-surface);
   color: var(--uwu-ink);
+  letter-spacing: inherit;
   cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
 }
 
 button:hover:not(:disabled) {
@@ -103,8 +109,8 @@ button.primary {
 }
 
 button.primary:hover:not(:disabled) {
-  background: var(--uwu-pink-solid);
-  filter: brightness(1.06);
+  background: var(--uwu-pink-solid-hover);
+  border-color: var(--uwu-pink-solid-hover);
 }
 
 button.danger {
@@ -142,24 +148,55 @@ button.quiet {
 /* Title bar and the page; made inert while a dialog is open. */
 .background {
   display: grid;
-  grid-template-rows: 38px 1fr;
+  grid-template-rows: 44px 1fr;
   height: 100%;
 }
 
+/* A slim bar on the canvas, like the top of UwUMail's sidebar: the logo, the
+   actions and the window's own buttons (the window has no system frame). */
 .titlebar {
   display: flex;
   align-items: stretch;
-  gap: 4px;
-  padding: 0 0 0 14px;
-  border-bottom: 1px solid var(--uwu-hairline);
-  background: var(--uwu-surface);
+  gap: 6px;
+  padding: 0 0 0 16px;
+  background: var(--uwu-canvas);
   user-select: none;
 }
 
 .titlebar-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
+}
+
+/* Sending this screen: a calm pill, pink while it sends. */
+.titlebar-send {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 280px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--uwu-radius-pill);
+  border-color: var(--uwu-border);
+  background: var(--uwu-surface);
+  color: var(--uwu-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.titlebar-send:hover:not(:disabled) {
+  color: var(--uwu-ink);
+  background: var(--uwu-surface);
+}
+
+.titlebar-send[data-active='true'],
+.titlebar-send[data-active='true']:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--uwu-pink-tint);
+  color: var(--uwu-pink-ink);
 }
 
 .titlebar-action {
@@ -186,7 +223,8 @@ button.quiet {
 }
 
 .titlebar-action:hover:not(:disabled) {
-  color: var(--uwu-ink);
+  color: var(--uwu-pink-ink);
+  background: var(--uwu-pink-tint);
 }
 
 /* Caption buttons the size Windows uses: the full bar height, 46 px wide. */
@@ -215,7 +253,7 @@ button.quiet {
 }
 
 .window-control:hover:not(:disabled) {
-  background: var(--uwu-elevated);
+  background: var(--uwu-pink-tint);
 }
 
 .window-control.close:hover:not(:disabled) {
@@ -224,12 +262,13 @@ button.quiet {
 }
 
 .titlebar .wordmark {
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 800;
   letter-spacing: -0.02em;
 }
 
 .titlebar .wordmark span {
-  color: var(--uwu-pink-solid);
+  color: var(--uwu-pink);
 }
 
 /* ── Icons ─────────────────────────────────────────────── */
@@ -298,28 +337,52 @@ button:has(> .icon):not(.icon-button) {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: color-mix(in srgb, #141016 45%, transparent);
+  background: var(--uwu-backdrop);
+  backdrop-filter: blur(2px);
   z-index: 10;
 }
 
 .modal {
   position: relative;
-  width: min(520px, 100%);
+  width: min(540px, 100%);
   max-height: 100%;
   overflow-y: auto;
   display: grid;
   gap: 14px;
-  padding: 20px 22px 18px;
-  border-radius: var(--uwu-radius-card);
+  padding: 22px 24px 20px;
+  border-radius: var(--uwu-radius-dialog);
   border: 1px solid var(--uwu-border);
   background: var(--uwu-surface);
-  box-shadow: 0 24px 60px -24px rgba(20, 16, 22, 0.45);
+  box-shadow: var(--uwu-shadow-float);
+  animation: pop 160ms ease-out;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
 }
 
 .modal[data-size='wide'] {
-  width: min(780px, 100%);
-  height: min(600px, 100%);
+  width: min(880px, 100%);
+  height: min(660px, 100%);
   grid-template-rows: auto 1fr;
+  padding: 22px 24px 0;
+}
+
+.dialog-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--uwu-radius-control);
+}
+
+.dialog-close:hover:not(:disabled) {
+  background: var(--uwu-pink-tint);
+  color: var(--uwu-pink-ink);
 }
 
 /* Warnings look different on purpose — never like a routine dialog. */
@@ -330,6 +393,7 @@ button:has(> .icon):not(.icon-button) {
 
 .modal-title {
   margin: 0;
+  padding-right: 40px;
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -353,6 +417,7 @@ button:has(> .icon):not(.icon-button) {
 .dialog-lead {
   margin: 0;
   line-height: 1.5;
+  color: var(--uwu-muted);
 }
 
 /* ── Forms ─────────────────────────────────────────────── */
@@ -465,8 +530,8 @@ button:has(> .icon):not(.icon-button) {
 
 .settings {
   display: grid;
-  grid-template-columns: 170px 1fr;
-  gap: 20px;
+  grid-template-columns: 200px 1fr;
+  gap: 24px;
   min-height: 0;
   height: 100%;
 }
@@ -475,32 +540,73 @@ button:has(> .icon):not(.icon-button) {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding-bottom: 20px;
 }
 
 .settings-nav button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 40px;
+  flex: none;
+  padding: 0 12px;
   border: 0;
+  border-radius: 12px;
   background: transparent;
   text-align: left;
+  font-size: 13.5px;
   color: var(--uwu-muted);
-  padding: 9px 12px;
+  white-space: nowrap;
 }
 
-.settings-nav button[aria-current='page'] {
+.settings-nav button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--uwu-pink-tint) 55%, transparent);
+  color: var(--uwu-ink);
+}
+
+.settings-nav button[aria-current='page'],
+.settings-nav button[aria-current='page']:hover:not(:disabled) {
   background: var(--uwu-pink-tint);
   color: var(--uwu-pink-ink);
 }
 
 .settings-content {
+  display: grid;
+  align-content: start;
+  gap: 12px;
   min-height: 0;
+  min-width: 0;
   overflow-y: auto;
-  padding-right: 4px;
+  padding: 0 6px 24px 0;
 }
 
-.settings-close {
-  position: absolute;
-  top: 14px;
-  right: 14px;
+.section-head h3 {
+  margin: 0;
   font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.section-sub {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--uwu-muted);
+}
+
+/* A framed group inside a section, such as the paired phones. */
+.panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--uwu-radius-card);
+  border: 1px solid var(--uwu-hairline);
+  background: var(--uwu-elevated);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .setting-row {
@@ -512,6 +618,7 @@ button:has(> .icon):not(.icon-button) {
   border-bottom: 1px solid var(--uwu-hairline);
 }
 
+.setting-row:has(+ :not(.setting-row)),
 .setting-row:last-child {
   border-bottom: 0;
 }
@@ -529,7 +636,7 @@ button:has(> .icon):not(.icon-button) {
 
 .setting-description {
   margin: 2px 0 0;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.45;
   color: var(--uwu-muted);
 }
@@ -637,6 +744,24 @@ button:has(> .icon):not(.icon-button) {
   text-align: center;
 }
 
+.about-facts {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 14px;
+  margin: 4px 0 10px;
+  font-size: 13px;
+}
+
+.about-facts dt {
+  color: var(--uwu-muted);
+  text-align: right;
+}
+
+.about-facts dd {
+  margin: 0;
+  text-align: left;
+}
+
 .about-actions {
   display: flex;
   flex-wrap: wrap;
@@ -661,4 +786,37 @@ button:has(> .icon):not(.icon-button) {
 .modal[data-size='wide'] .modal-body {
   min-height: 0;
   overflow: hidden;
+}
+
+/* Narrow windows: the sections line up on top and scroll sideways. */
+@media (max-width: 700px) {
+  .modal-backdrop {
+    padding: 12px;
+  }
+
+  .modal[data-size='wide'] {
+    height: 100%;
+    padding: 18px 16px 0;
+  }
+
+  .settings {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 12px;
+  }
+
+  .settings-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .settings-nav button {
+    height: 36px;
+    gap: 8px;
+  }
+
+  .titlebar-send {
+    max-width: 160px;
+  }
 }

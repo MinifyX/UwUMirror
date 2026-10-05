@@ -10,18 +10,15 @@ import {
   type Device,
   type SendStatus,
 } from './lib/api';
+import { useAdb, useAdbDevices } from './lib/android';
 import { t, useLanguage } from './lib/i18n';
 import { applyMiracast } from './lib/miracast';
-import {
-  getSettings,
-  RESOLUTIONS,
-  receiverName,
-  updateSettings,
-  useSettings,
-} from './lib/settings';
+import { getSettings, RESOLUTIONS, receiverName, useSettings } from './lib/settings';
 import { onStreamEnded, onStreamStarted, startStreams, useStreams } from './lib/streams';
 import { Home } from './components/Home';
-import { SettingsDialog } from './components/SettingsDialog';
+import { Icon } from './components/Icon';
+import { isSending, SendDialog } from './components/SendDialog';
+import { SettingsDialog, type SettingsSection } from './components/SettingsDialog';
 import { StreamView } from './components/StreamView';
 import { TitleBar } from './components/TitleBar';
 import { showToast, Toasts } from './components/Toasts';
@@ -32,7 +29,8 @@ export function App() {
   const streams = useStreams();
   const [activeId, setActiveId] = useState<number | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState<SettingsSection | null>(null);
+  const [sendOpen, setSendOpen] = useState(false);
   const [computer, setComputer] = useState('');
   const [info, setInfo] = useState<AppInfo | null>(null);
   const [airplay, setAirplay] = useState<AirplayStatus | null>(null);
@@ -41,11 +39,14 @@ export function App() {
   const activeRef = useRef(activeId);
   activeRef.current = activeId;
   const backgroundRef = useRef<HTMLDivElement>(null);
+  const { adb, refresh: refreshAdb } = useAdb();
+  const { devices, error: deviceError } = useAdbDevices(adb);
+  const dialogOpen = settingsOpen !== null || sendOpen;
 
   // Behind an open dialog the window can't be clicked or tabbed into.
   useEffect(() => {
-    if (backgroundRef.current) backgroundRef.current.inert = settingsOpen;
-  }, [settingsOpen]);
+    if (backgroundRef.current) backgroundRef.current.inert = dialogOpen;
+  }, [dialogOpen]);
 
   const name = receiverName(settings, computer);
 
@@ -212,7 +213,7 @@ export function App() {
       const ctrl = event.ctrlKey || event.metaKey;
       if (ctrl && event.key === ',') {
         event.preventDefault();
-        setSettingsOpen(true);
+        setSettingsOpen((open) => open ?? 'general');
       } else if (ctrl && (event.key === '0' || event.key === '1')) {
         event.preventDefault();
         if (event.key === '0') setActiveId(null);
@@ -242,7 +243,21 @@ export function App() {
   return (
     <div className="shell" data-fullscreen={fullscreen && !!active}>
       <div className="background" ref={backgroundRef}>
-        <TitleBar onSettings={() => setSettingsOpen(true)} />
+        <TitleBar onSettings={() => setSettingsOpen('general')}>
+          {info?.castSend && (
+            <button
+              className="titlebar-send"
+              data-active={isSending(sending)}
+              onClick={() => setSendOpen(true)}
+              title={t('Diesen Bildschirm an einen anderen Computer senden')}
+            >
+              <Icon name="screenShare" size={16} />
+              {isSending(sending)
+                ? t('Sendet an „{name}“', { name: sending?.receiver ?? '' })
+                : t('Senden')}
+            </button>
+          )}
+        </TitleBar>
         <main className="main">
           {active ? (
             <StreamView
@@ -257,24 +272,41 @@ export function App() {
             <Home
               streams={streams}
               receiverName={name}
-              computerName={computer || name}
               airplay={airplay}
               cast={cast}
-              canSend={!!info?.castSend}
-              sending={sending}
               ffmpeg={info === null ? undefined : info.ffmpeg}
-              onAirplayToggle={(airplayEnabled) => updateSettings({ airplayEnabled })}
-              onCastToggle={(castEnabled) => updateSettings({ castEnabled })}
-              onRecheckFfmpeg={recheckFfmpeg}
+              devices={devices}
               onShow={setActiveId}
               onStop={stop}
               onMirror={mirror}
+              onSettings={setSettingsOpen}
             />
           )}
         </main>
       </div>
       {settingsOpen && (
-        <SettingsDialog onClose={() => setSettingsOpen(false)} computer={computer} info={info} />
+        <SettingsDialog
+          section={settingsOpen}
+          onClose={() => setSettingsOpen(null)}
+          computer={computer}
+          info={info}
+          airplay={airplay}
+          cast={cast}
+          adb={adb}
+          onAdbRefresh={refreshAdb}
+          devices={devices}
+          deviceError={deviceError}
+          streams={streams}
+          onMirror={mirror}
+          onShow={(id) => {
+            setSettingsOpen(null);
+            setActiveId(id);
+          }}
+          onRecheckFfmpeg={recheckFfmpeg}
+        />
+      )}
+      {sendOpen && (
+        <SendDialog name={computer || name} status={sending} onClose={() => setSendOpen(false)} />
       )}
       <Toasts />
     </div>
