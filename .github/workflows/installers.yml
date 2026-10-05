@@ -7,7 +7,10 @@ name: Installers
 # so no job here holds a secret. A tag ends with a *draft* release carrying
 # everything plus SHA256SUMS.txt; publishing it is done by hand, after a look.
 #
-#   version ── check ×3 ── installers ×5 ── release (tags only)
+# The checks and the builds run side by side; only the release waits for both.
+#
+#   version ── check ×2 ─────┐
+#          └── installers ×5 ─┴── release (tags only)
 
 on:
   push:
@@ -24,7 +27,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
   CARGO_TERM_COLOR: always
   # Tauri runs linuxdeploy, itself an AppImage; runners have no FUSE for it.
   APPIMAGE_EXTRACT_AND_RUN: '1'
@@ -106,7 +108,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-latest, windows-latest]
+        # Windows: ci.yml checked it on main, and both Windows setups below
+        # compile everything again anyway.
+        os: [ubuntu-22.04, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -122,33 +126,38 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
             librsvg2-dev libdbus-1-dev libssl-dev libasound2-dev pkg-config
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: 22
-      - run: corepack enable
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # tauri-build wants every app's frontendDist to exist, and every bundle
-      # resource: scrcpy's device server is downloaded and checked by hash.
-      - run: pnpm -r build
-      - run: node scripts/fetch-scrcpy-server.mjs
+      # tauri-build wants every app's frontendDist to exist; checking needs no
+      # real build (ci.yml builds and typechecks the pages), and no Node
+      # install. scrcpy's server is a bundle resource, fetched and checked by
+      # hash with the runner's own Node.
+      - name: Placeholder front ends and scrcpy-server
+        shell: bash
+        run: |
+          for app in desktop setup; do
+            mkdir -p apps/$app/dist && echo '<!doctype html>' > apps/$app/dist/index.html
+          done
+          node scripts/fetch-scrcpy-server.mjs
 
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
           toolchain: stable
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          # Linux shares ci.yml's cache from main: a tag starts warm.
+          shared-key: ${{ runner.os == 'Linux' && 'linux' || 'macos' }}
 
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo test --workspace --locked --no-fail-fast
+      # The tests don't depend on the system and ran on Linux in ci.yml too;
+      # on macOS clippy is what's different.
+      - name: Tests, on Linux
+        if: runner.os == 'Linux'
+        run: cargo test --workspace --locked --no-fail-fast
 
   installers:
     name: Setup (${{ matrix.name }})
-    needs: check
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -197,10 +206,8 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
             librsvg2-dev libdbus-1-dev libssl-dev libasound2-dev pkg-config patchelf file libfuse2 xdg-utils
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: 22
-      - run: corepack enable
+      # Takes pnpm's version from package.json's packageManager; no corepack.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
@@ -211,6 +218,33 @@ jobs:
       # says so in the step's name instead of somewhere in a long build log.
       - name: Fetch scrcpy-server
         run: node scripts/fetch-scrcpy-server.mjs
+
+      # The FFmpeg the Windows and macOS downloads carry for AirPlay's sound
+      # (scripts/build-ffmpeg.sh): built once per platform and script, then
+      # taken from the cache.
+      - name: Cached FFmpeg
+        if: runner.os != 'Linux'
+        id: ffmpeg
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: apps/desktop/src-tauri/resources/ffmpeg/*.*
+          key: ffmpeg-${{ matrix.name }}-${{ hashFiles('scripts/build-ffmpeg.sh') }}
+      - name: MSYS2 for FFmpeg
+        if: runner.os == 'Windows' && steps.ffmpeg.outputs.cache-hit != 'true'
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
+        with:
+          msystem: ${{ matrix.arch == 'arm64' && 'CLANGARM64' || 'MINGW64' }}
+          update: false
+          pacboy: >-
+            ${{ matrix.arch == 'arm64' && 'clang:p llvm:p' || 'gcc:p binutils:p nasm:p' }}
+          install: make diffutils pkgconf tar xz curl
+      - name: Build FFmpeg (Windows)
+        if: runner.os == 'Windows' && steps.ffmpeg.outputs.cache-hit != 'true'
+        shell: msys2 {0}
+        run: scripts/build-ffmpeg.sh windows-${{ matrix.arch }}
+      - name: Build FFmpeg (macOS)
+        if: runner.os == 'macOS' && steps.ffmpeg.outputs.cache-hit != 'true'
+        run: scripts/build-ffmpeg.sh macos-universal
 
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
@@ -249,7 +283,7 @@ jobs:
           check="$RUNNER_TEMP/payload-check"
           "./$setup" --check-payload "$check"
           node - "$ARCH" "$setup" "$check" <<'EOF'
-          const { readFileSync } = require('node:fs');
+          const { readFileSync, readdirSync } = require('node:fs');
           const { join } = require('node:path');
           const [arch, setup, check] = process.argv.slice(2);
           const MACHINE = { x64: 0x8664, arm64: 0xaa64 };
@@ -257,7 +291,11 @@ jobs:
             console.log(`::error::${message}`);
             process.exit(1);
           };
-          for (const file of [setup, join(check, 'UwUMirror.exe')]) {
+          const ffmpeg = readdirSync(join(check, 'ffmpeg'))
+            .filter((name) => name.endsWith('.dll'))
+            .map((name) => join(check, 'ffmpeg', name));
+          if (ffmpeg.length !== 2) fail(`Expected avcodec and avutil, found ${ffmpeg.join(', ')}.`);
+          for (const file of [setup, join(check, 'UwUMirror.exe'), ...ffmpeg]) {
             const bytes = readFileSync(file);
             const pe = bytes.readUInt32LE(0x3c);
             if (bytes.toString('latin1', pe, pe + 4) !== 'PE\0\0') fail(`${file} is no Windows program.`);
@@ -293,6 +331,11 @@ jobs:
             codesign --verify --deep --strict "$app"
             lipo "$app"/Contents/MacOS/* -verify_arch arm64 x86_64
             test -f "$app/Contents/Resources/scrcpy-server"
+            # AirPlay's sound: the app's own FFmpeg, for both processors.
+            for lib in "$app"/Contents/Resources/ffmpeg/libav{codec,util}.*.dylib; do
+              lipo "$lib" -verify_arch arm64 x86_64
+              otool -L "$lib" | grep -v -e '@loader_path' -e '/usr/lib/' -e '/System/' -e ':$' && exit 1
+            done
             # Without these macOS 15 drops every packet to the local network,
             # and no phone ever finds the receiver.
             plutil -extract NSLocalNetworkUsageDescription raw "$app/Contents/Info.plist"
@@ -348,7 +391,8 @@ jobs:
 
   release:
     name: Draft release
-    needs: [version, installers]
+    # check too: the builds don't wait for it, but no release without it.
+    needs: [version, check, installers]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
