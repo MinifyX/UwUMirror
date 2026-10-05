@@ -218,9 +218,11 @@ impl Capture {
                 Ok(())
             }
         }))?;
-        // `MinUpdateInterval` (newer Windows 11) stays at its 16 ms: lower,
-        // a fast screen hands over frames the encoder can't take at once
-        // either, and capture to received got worse, not better, in tests.
+        // `MinUpdateInterval` (newer Windows 11) stays at its 16 ms. On a
+        // 165 Hz screen that skips some of a 60 fps video's frames (10-20 %
+        // in tests); lower, every change comes, the pointer's too, and the
+        // frames that then wait their turn behind those cost more: capture
+        // to received went from 4.4 to 9.8 ms at the 95th percentile.
         session.StartCapture()?;
         let (width, height) = pixels(size);
         let texture = gpu.bgra_texture(width, height)?;
