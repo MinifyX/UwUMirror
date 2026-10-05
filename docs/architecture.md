@@ -58,12 +58,17 @@ the view that shows the stream, so switching tabs never restarts a decoder.
 
 **The hub keeps each stream's frames since its last key frame** (at most 600
 frames or 48 MB) and replays them to a page that subscribes, so a reload shows
-a picture at once. iPhones send a new key frame only when the picture changes a
+a picture at once. A live frame goes to the page first and into the cache
+after. iPhones send a new key frame only when the picture changes a
 lot; a still screen can go minutes without one.
 
 **Sound** is decoded in Rust and played with cpal (`core/audio.rs`): a short
 buffer (60 ms to start), linear resampling to the device's rate, and a buffer
 that is cut back to 100 ms whenever it grows past 300 ms. Live beats complete.
+The buffer is the source's choice (`Buffering`): UwUCast, whose sound comes
+every 10 ms from a computer on the same network, starts after 20 ms and is
+cut back to 30 ms past 80 ms. No limit goes below what the output device
+takes at once, or a device with long periods would run dry at every turn.
 
 ## AirPlay
 
@@ -239,6 +244,11 @@ free one), big endian:
    | 4      | end: the sender stops on purpose                                  | 0      |
    | `0x81` | receiver → sender: a key frame, please                            | 0      |
 
+A PTS is wall-clock time, µs since 1970 on the sender's clock: when Windows
+handed over the picture, or when the sound was recorded. Players only use the
+differences; the receiver also tells from it how late a frame is. (Older
+senders counted from their start; that still plays.)
+
 Lengths are checked before anything is allocated; an unknown type, a frame
 without a start code or half a stereo frame ends the connection. A stream ends
 cleanly with an end message or when the connection closes between two
@@ -253,14 +263,44 @@ change; the latest is kept). D3D11's video processor converts BGRA to NV12 and
 scales it into at most 1920 × 1080, proportions kept, on the card. Media
 Foundation's H.264 encoder takes it: the graphics card's (asynchronous,
 textures through a DXGI device manager, found for the capturing card by its
-LUID) at 60 frames a second, or Windows' own (synchronous, frames copied back
-to memory) at 30. Main profile, low latency, CBR at 10 Mbit/s, no B-frames, a
-key frame every two seconds and on request, SPS and PPS in front of every key
+LUID) at up to 60 frames a second, or Windows' own (synchronous, frames copied
+back to memory) at up to 30. Main profile, SPS and PPS in front of every key
 frame. Colours are BT.709 where the encoder writes that into the stream (the
 cards' do), BT.601 with Windows' own, which writes nothing. Sound is WASAPI's
-loopback of the default output through cpal, resampled to 48 kHz stereo. The
-capture threads never wait for the network: a full queue (a third of a
-second) drops frames until the next key frame, which is asked for at once.
+loopback of the default output through cpal, resampled to 48 kHz stereo, in
+the 10 ms pieces WASAPI hands over.
+
+**Latency.** UwUCast trades bandwidth for latency everywhere; it runs on a
+local network. Stage by stage:
+
+| Stage         | What keeps it short                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Capture       | The picture thread waits for `FrameArrived` and takes the newest frame at once, no fixed tick; two pool buffers, each copied out on the card and handed back at once. At most about 75 frames a second; a still screen is sent again every 100 ms.                                                                                                                                                                                                   |
+| Convert       | The video processor on the card, flushed right away; no read-back for the card's encoder (Windows' own needs the frame in memory: one `Map` that waits a millisecond or two).                                                                                                                                                                                                                                                                        |
+| Encode        | Low latency mode (as a `VARIANT_BOOL`: Windows' own encoder held 16 frames without it), no B-frames, one reference frame, the fastest preset, CBR at 40 Mbit/s for 1080p60, scaled by pixels a second within 12–60, with a rate-control buffer of four frames so no key frame becomes a burst. A key frame when the receiver asks, otherwise every 5 s. A hardware encoder's finished frames are taken out by an event thread the moment it says so. |
+| Network       | `TCP_NODELAY` on both ends, a 256 kB send buffer instead of whatever Windows grows it to, one write a message, and at most one frame waiting behind the one being written: a frame without room is dropped with the ones after it until a key frame, which is asked for at once. Sound has a queue of its own and goes first.                                                                                                                        |
+| Receiver, hub | Nothing buffered: each frame goes to the hub as it is read, and from the hub to the page before its cache.                                                                                                                                                                                                                                                                                                                                           |
+| Page          | WebCodecs with `optimizeForLatency`, each frame drawn the moment it is decoded on a desynchronized canvas. Media Source, as a fallback, plays a little faster to catch up instead of jumping.                                                                                                                                                                                                                                                        |
+| Sound         | A 20 ms buffer at the receiver, cut back to 30 ms past 80 ms.                                                                                                                                                                                                                                                                                                                                                                                        |
+
+Senders stamp frames with the wall clock, so the receiver logs capture →
+received every 5 s, and the page received → drawn and capture → drawn (both
+in the detailed log). Between two computers the first holds whatever their
+clocks disagree by. `cargo run --release -p uwumirror-cast --example latency`
+measures it on one computer, against a receiver in the same process. With an
+RTX 3070, 1080p, `ffplay`'s `testsrc2` at 60 fps on the screen, capture →
+received, median / 95th percentile / worst:
+
+| Encoder       | Before              | After             | Bit rate     |
+| ------------- | ------------------- | ----------------- | ------------ |
+| Graphics card | 12.0 / 20.9 / 25 ms | 4.0 / 4.4 / 10 ms | 30–36 Mbit/s |
+| Windows' own  | 548 / 555 / 567 ms  | 15 / 26 / 33 ms   | 11 Mbit/s    |
+
+Chromium's hardware decoder hands out a frame 0.4 ms after it went in, and
+holds none back. On a 165 Hz screen Windows skips some of a 60 fps video's
+frames (10–20 % here: capture's own 16 ms minimum between frames); lowering
+that minimum sent every change, the pointer's too, and the frames that then
+waited their turn were later: 9.8 ms at the 95th percentile.
 
 ## Tests
 
@@ -302,8 +342,10 @@ Everything that can be tested without a phone is:
 - **UwUCast for real, on Windows** (`cast/tests/send_screen.rs`, ignored by
   default): records this screen, encodes with the graphics card's encoder and
   with Windows' own, sends to a receiver in the same process and checks SPS,
-  PPS and IDR in the first frame, the key frame interval and the end; and the
-  loopback sound while a quiet tone plays. `UWUMIRROR_DUMP=folder` writes the
+  PPS and IDR in the first frame, no key frames after it unasked, wall-clock
+  stamps and the end; and the loopback sound while a quiet tone plays. The
+  `latency` example measures capture → received the same way (see
+  [UwUCast](#uwucast-computer-to-computer)). `UWUMIRROR_DUMP=folder` writes the
   streams out for `ffmpeg`. mDNS between two announcements is another ignored
   test (`discovery.rs`).
 - **Real decoding**: AAC made by the `ffmpeg` command, decoded through the

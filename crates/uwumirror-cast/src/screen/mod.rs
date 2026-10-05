@@ -1,11 +1,16 @@
 //! Sending this computer's screen (Windows only).
 //!
 //! [`Broadcast::start`] sets up everything that can fail on this computer
-//! first — the screen recording, the encoder — then connects. Two threads do
-//! the work: one records, converts and encodes the picture at a steady rate,
-//! one records the sound; both put what they make into the session's
-//! [`Outbox`](crate::sender::Outbox). A task waits for the end: stopped here,
-//! closed by the receiver, or failed.
+//! first — the screen recording, the encoder — then connects. The picture
+//! thread waits for Windows to hand over a new frame and converts and encodes
+//! it at once, so a frame never waits for a fixed tick; at most
+//! [`SendOptions::fps`] a second, and on a still screen the last one again
+//! every [`REPEAT`]. A hardware encoder's finished frames go straight from its
+//! event thread to the network, the sound from the loopback thread; both
+//! through the session's [`Outbox`](crate::sender::Outbox). A task waits for
+//! the end: stopped here, closed by the receiver, or failed.
+//!
+//! Latency, stage by stage, is in `docs/architecture.md`.
 
 mod capture;
 mod convert;
@@ -40,7 +45,9 @@ pub struct SendOptions {
     /// Frames a second with the graphics card's encoder; Windows' own, on
     /// the processor, does at most [`SOFTWARE_FPS`].
     pub fps: u32,
-    pub bit_rate: u32,
+    /// Bits a second; `None` picks one for the picture's size and rate
+    /// ([`bit_rate_for`]).
+    pub bit_rate: Option<u32>,
     /// Try the graphics card's encoder first. Off, Windows' own is used.
     pub hardware: bool,
 }
@@ -53,11 +60,21 @@ impl Default for SendOptions {
             max_width: 1920,
             max_height: 1080,
             fps: 60,
-            bit_rate: 10_000_000,
+            bit_rate: None,
             hardware: true,
         }
     }
 }
+
+pub use encode::{bit_rate_for, KEY_FRAME_SECONDS};
+
+/// A still screen sends no new frames; the last one is encoded again this
+/// often, which sharpens it after a key frame the rate control kept small
+/// and tells the receiver the sender is still there.
+const REPEAT: Duration = Duration::from_millis(100);
+/// How long the picture thread waits at most before it looks at the stop
+/// flag and the receiver's requests for a key frame again.
+const WAIT_SLICE: Duration = Duration::from_millis(10);
 
 pub const SOFTWARE_FPS: u32 = 30;
 
@@ -123,6 +140,45 @@ pub fn system_name() -> String {
     }
 }
 
+/// The sending side's clock: [`capture::counter`], which frames are stamped
+/// with when they come, tied to the wall clock once at the start.
+///
+/// The encoder sees microseconds since the start, small numbers as it
+/// expects; the wire gets wall-clock time ([`Clock::wall`]), so the receiver
+/// can tell how old a frame is. Over a long session the two clocks may drift
+/// apart by a few parts per million, far below anything one could see.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Clock {
+    /// The counter at the start.
+    start: i64,
+    /// The wall clock at the start, µs since 1970.
+    epoch_us: u64,
+}
+
+impl Clock {
+    pub fn new() -> Self {
+        Self {
+            start: capture::counter(),
+            epoch_us: crate::latency::wall_clock_us(),
+        }
+    }
+
+    /// Microseconds since the start.
+    pub fn now_us(&self) -> u64 {
+        self.since_start_us(capture::counter())
+    }
+
+    /// A [`capture::counter`] time as microseconds since the start.
+    pub fn since_start_us(&self, counter: i64) -> u64 {
+        (counter - self.start).max(0) as u64 / 10
+    }
+
+    /// Microseconds since the start as wall-clock time, for the wire.
+    pub fn wall(&self, since_start_us: u64) -> u64 {
+        self.epoch_us + since_start_us
+    }
+}
+
 /// The encoded size for a screen: fitted into the largest allowed, even.
 pub fn encoded_size(screen: (u32, u32), max: (u32, u32)) -> (u32, u32) {
     // Never larger than the screen itself.
@@ -152,7 +208,7 @@ pub async fn start(
     on_end: impl FnOnce(Ending) + Send + 'static,
 ) -> Result<Broadcast, SendError> {
     let stop = Arc::new(AtomicBool::new(false));
-    let clock = Instant::now();
+    let clock = Clock::new();
     let (ready_tx, ready_rx) = oneshot::channel::<Result<Ready, String>>();
     let (outbox_tx, outbox_rx) = mpsc::channel::<Outbox>();
     let (ended_tx, ended_rx) = oneshot::channel::<Option<String>>();
@@ -250,7 +306,7 @@ pub async fn start(
 fn picture(
     options: &SendOptions,
     stop: &AtomicBool,
-    clock: Instant,
+    clock: Clock,
     ready: oneshot::Sender<Result<Ready, String>>,
     outbox: mpsc::Receiver<Outbox>,
 ) -> Result<(), String> {
@@ -272,7 +328,7 @@ fn picture(
 fn run(
     options: &SendOptions,
     stop: &AtomicBool,
-    clock: Instant,
+    clock: Clock,
     ready: oneshot::Sender<Result<Ready, String>>,
     outbox: mpsc::Receiver<Outbox>,
 ) -> Result<(), String> {
@@ -280,13 +336,16 @@ fn run(
         let gpu = capture::Gpu::new()?;
         let mut screen = capture::Capture::primary(&gpu)?;
         let (width, height) = encoded_size(screen.size(), (options.max_width, options.max_height));
+        let fps = options.fps.clamp(10, 60);
         let encoder = encode::Encoder::open(
             &gpu,
             encode::Settings {
                 width,
                 height,
-                fps: options.fps.clamp(10, 60),
-                bit_rate: options.bit_rate,
+                fps,
+                bit_rate: options
+                    .bit_rate
+                    .unwrap_or_else(|| bit_rate_for(width, height, fps)),
             },
             SOFTWARE_FPS,
             options.hardware,
@@ -318,9 +377,21 @@ fn run(
         return Ok(());
     };
 
-    let interval = Duration::from_secs(1) / settings.fps;
-    let mut next = Instant::now();
+    // Finished frames go out from whichever thread has them, stamped with
+    // wall-clock time for the receiver.
+    encoder.set_sink({
+        let outbox = outbox.clone();
+        Box::new(move |frame: encode::Encoded| {
+            outbox.video(frame.key, clock.wall(frame.pts_us), frame.data);
+        })
+    });
+
+    // A little under a frame apart: a 60 Hz screen's frames come every
+    // 16.7 ms give or take, and shouldn't wait for the take.
+    let spacing = Duration::from_secs(1) * 4 / 5 / settings.fps;
+    let mut last: Option<Instant> = None;
     let mut first = true;
+    let mut last_pts = 0;
     let failed = loop {
         if stop.load(Ordering::Relaxed) {
             break None;
@@ -328,32 +399,40 @@ fn run(
         if outbox.is_closed() {
             return Ok(());
         }
-        let now = Instant::now();
-        if next > now {
-            std::thread::sleep(next - now);
+        // A new frame from Windows, a still screen due for a repeat, or a
+        // receiver that needs a key frame now.
+        let fresh = screen.wait(WAIT_SLICE);
+        let since = last.map(|at| at.elapsed());
+        if !fresh && since.is_some_and(|since| since < REPEAT) && !outbox.key_wanted() {
+            continue;
         }
-        // Behind by more than a frame (a slow encoder, a busy machine): skip
-        // ahead instead of rushing frames out to catch up.
-        next = (next + interval).max(Instant::now());
+        // Not much more than `fps` a second (a 144 Hz screen would otherwise
+        // send 144): early, the frame waits its turn, and whatever is newest
+        // then is taken.
+        if let Some(since) = since.filter(|since| *since < spacing) {
+            std::thread::sleep(spacing - since);
+        }
+        last = Some(Instant::now());
 
-        let mut step = || -> windows::core::Result<Vec<encode::Encoded>> {
+        let mut step = || -> windows::core::Result<()> {
             if screen.update(&gpu)? {
                 converter.set_source(&gpu, &screen.texture)?;
             }
             let frame = converter.convert()?;
+            // On its way to the card now, not when the encoder next submits.
+            unsafe { gpu.context.Flush() };
             let key = std::mem::take(&mut first) | outbox.take_key_request();
-            let pts_us = clock.elapsed().as_micros() as u64;
+            // When Windows handed the frame over; a repeat is stamped now.
+            let pts_us = screen
+                .captured
+                .take()
+                .map_or_else(|| clock.now_us(), |at| clock.since_start_us(at))
+                .max(last_pts + 1);
+            last_pts = pts_us;
             encoder.encode(&gpu, &frame, pts_us, key)
         };
-        match step() {
-            Ok(frames) => {
-                for frame in frames {
-                    if !outbox.video(frame.key, frame.pts_us, frame.data) {
-                        return Ok(());
-                    }
-                }
-            }
-            Err(error) => break Some(error.message()),
+        if let Err(error) = step() {
+            break Some(error.message());
         }
     };
     // Say goodbye, but don't wait long on a network that is stuck.

@@ -7,8 +7,13 @@
 //! being recorded. Frames come only when something changes; the latest is
 //! kept in a texture of our own, so a still screen is still a picture.
 
+use std::sync::{Arc, OnceLock};
+use std::time::Duration;
+
+use parking_lot::{Condvar, Mutex};
 use windows::core::{Interface, Result};
 use windows::Foundation::Metadata::ApiInformation;
+use windows::Foundation::TypedEventHandler;
 use windows::Graphics::Capture::{
     Direct3D11CaptureFramePool, GraphicsCaptureItem, GraphicsCaptureSession,
 };
@@ -29,10 +34,16 @@ use windows::Win32::Graphics::Direct3D11::{
 use windows::Win32::Graphics::Dxgi::Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC};
 use windows::Win32::Graphics::Dxgi::IDXGIDevice;
 use windows::Win32::Graphics::Gdi::{MonitorFromPoint, MONITOR_DEFAULTTOPRIMARY};
+use windows::Win32::System::Performance::{QueryPerformanceCounter, QueryPerformanceFrequency};
 use windows::Win32::System::WinRT::Direct3D11::{
     CreateDirect3D11DeviceFromDXGIDevice, IDirect3DDxgiInterfaceAccess,
 };
 use windows::Win32::System::WinRT::Graphics::Capture::IGraphicsCaptureItemInterop;
+
+/// Frames Windows may have ready at once. Each is copied out and handed back
+/// at once, so two are plenty: one being filled while the other is copied.
+/// More would only let frames wait.
+const BUFFERS: i32 = 2;
 
 /// The graphics card everything runs on: capture, conversion, and — when its
 /// encoder takes textures — encoding.
@@ -121,6 +132,42 @@ pub struct Capture {
     size: SizeInt32,
     /// The latest frame, ours to read whenever.
     pub texture: ID3D11Texture2D,
+    /// When Windows handed over the frame last taken into the texture, on
+    /// [`counter`]'s clock; taken by whoever stamps it.
+    pub captured: Option<i64>,
+    arrivals: Arc<Arrivals>,
+    /// The `FrameArrived` registration, removed when dropped.
+    token: i64,
+}
+
+/// What the capture's `FrameArrived` handler tells the picture thread.
+#[derive(Default)]
+struct Arrivals {
+    /// When the newest frame not yet taken came.
+    latest: Mutex<Option<i64>>,
+    came: Condvar,
+}
+
+/// The performance counter in 100 ns units: the clock everything on the
+/// sending side is stamped with.
+///
+/// Not the frames' own `SystemRelativeTime`: on a 165 Hz screen that runs
+/// ahead of this clock by up to 10 ms, a target time rather than a moment
+/// that has passed. When Windows hands a frame over is what we can measure.
+pub fn counter() -> i64 {
+    static FREQUENCY: OnceLock<i64> = OnceLock::new();
+    let frequency = *FREQUENCY.get_or_init(|| {
+        let mut frequency = 0;
+        unsafe {
+            let _ = QueryPerformanceFrequency(&mut frequency);
+        }
+        frequency.max(1)
+    });
+    let mut ticks = 0;
+    unsafe {
+        let _ = QueryPerformanceCounter(&mut ticks);
+    }
+    (i128::from(ticks) * 10_000_000 / i128::from(frequency)) as i64
 }
 
 fn pixels(size: SizeInt32) -> (u32, u32) {
@@ -145,7 +192,7 @@ impl Capture {
         let pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
             &device,
             DirectXPixelFormat::B8G8R8A8UIntNormalized,
-            2,
+            BUFFERS,
             size,
         )?;
         let session = pool.CreateCaptureSession(&item)?;
@@ -159,6 +206,23 @@ impl Capture {
         {
             let _ = session.SetIsCursorCaptureEnabled(true);
         }
+        // Free-threaded: the handler runs on a thread of Windows' pool the
+        // moment a frame is ready, and only notes it; the frame is taken on
+        // the picture thread.
+        let arrivals = Arc::new(Arrivals::default());
+        let token = pool.FrameArrived(&TypedEventHandler::new({
+            let arrivals = arrivals.clone();
+            move |_, _| {
+                *arrivals.latest.lock() = Some(counter());
+                arrivals.came.notify_one();
+                Ok(())
+            }
+        }))?;
+        // `MinUpdateInterval` (newer Windows 11) stays at its 16 ms. On a
+        // 165 Hz screen that skips some of a 60 fps video's frames (10-20 %
+        // in tests); lower, every change comes, the pointer's too, and the
+        // frames that then wait their turn behind those cost more: capture
+        // to received went from 4.4 to 9.8 ms at the 95th percentile.
         session.StartCapture()?;
         let (width, height) = pixels(size);
         let texture = gpu.bgra_texture(width, height)?;
@@ -168,6 +232,9 @@ impl Capture {
             session,
             size,
             texture,
+            captured: None,
+            arrivals,
+            token,
         })
     }
 
@@ -176,9 +243,22 @@ impl Capture {
         pixels(self.size)
     }
 
+    /// Waits until Windows has a new frame, at most `timeout`. True when
+    /// there is one for [`Capture::update`].
+    pub fn wait(&self, timeout: Duration) -> bool {
+        let mut latest = self.arrivals.latest.lock();
+        if latest.is_none() {
+            self.arrivals.came.wait_for(&mut latest, timeout);
+        }
+        latest.is_some()
+    }
+
     /// Takes the newest frame, if one came, into [`Capture::texture`]. True
     /// when the screen changed size and the texture is a new one.
     pub fn update(&mut self, gpu: &Gpu) -> Result<bool> {
+        // The stamp first: a frame that comes in meanwhile is the newest
+        // taken below, and counts as a little older than it is, never younger.
+        let arrived = self.arrivals.latest.lock().take();
         let mut newest = None;
         // Only the newest counts; older ones go straight back to the pool.
         while let Ok(frame) = self.pool.TryGetNextFrame() {
@@ -195,7 +275,7 @@ impl Capture {
             self.pool.Recreate(
                 &self.device,
                 DirectXPixelFormat::B8G8R8A8UIntNormalized,
-                2,
+                BUFFERS,
                 size,
             )?;
             self.size = size;
@@ -207,13 +287,17 @@ impl Capture {
         let access: IDirect3DDxgiInterfaceAccess = surface.cast()?;
         let source: ID3D11Texture2D = unsafe { access.GetInterface()? };
         unsafe { gpu.context.CopyResource(&self.texture, &source) };
+        // Back to the pool at once: the copy is queued before the frame can
+        // be reused, and capture never waits for a buffer of ours.
         let _ = frame.Close();
+        self.captured = Some(arrived.unwrap_or_else(counter));
         Ok(false)
     }
 }
 
 impl Drop for Capture {
     fn drop(&mut self) {
+        let _ = self.pool.RemoveFrameArrived(self.token);
         let _ = self.session.Close();
         let _ = self.pool.Close();
     }

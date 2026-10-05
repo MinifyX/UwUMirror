@@ -32,6 +32,12 @@
 //! | 4    | →         | end: empty, the sender stops on purpose                     |
 //! | 0x81 | ←         | key frame, please: empty                                    |
 //!
+//! A PTS is wall-clock time, microseconds since 1970 on the sender's clock:
+//! for video the moment the screen showed the picture, for sound the moment
+//! it was recorded. Players only use the differences; the receiver also
+//! measures how late a frame is ([`crate::latency`]). Older senders counted
+//! from their start instead, which still plays, and doesn't count as latency.
+//!
 //! Every length is checked before anything is allocated, and anything that
 //! doesn't fit — an unknown type, a frame without a start code, odd sound —
 //! ends the connection: a receiver open to the whole network takes nothing

@@ -554,6 +554,7 @@ pub fn run() {
             streams,
             subscribe_video,
             stream_stop,
+            hub::video_latency,
             android_status,
             android_devices,
             android_qr,

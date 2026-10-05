@@ -105,10 +105,12 @@ fn check(info: &Sending, seen: &[StreamEvent]) -> Vec<VideoPacket> {
         info.width,
         info.height
     );
-    let expected = (info.fps as u64 * SECONDS) as usize;
+    // Frames come as the screen changes; a still one is sent again ten
+    // times a second.
+    let expected = (10 * SECONDS) as usize;
     assert!(
         frames.len() >= expected / 2,
-        "{} frames, expected about {expected}",
+        "{} frames, expected at least about {expected}",
         frames.len()
     );
     // The first frame starts a decoder: SPS, PPS and an IDR slice.
@@ -130,8 +132,9 @@ fn check(info: &Sending, seen: &[StreamEvent]) -> Vec<VideoPacket> {
         .find(|unit| unit[0] & 0x1f == 7)
         .unwrap();
     println!("profile_idc {}, level_idc {}", sps[1], sps[3]);
-    // A key frame every two seconds, each with its parameter sets.
-    assert!(keys >= 2, "{keys} key frames in {SECONDS} s");
+    // Key frames only at the start (and on request, or every few seconds),
+    // each with its parameter sets.
+    assert!((1..=2).contains(&keys), "{keys} key frames in {SECONDS} s");
     for frame in frames.iter().filter(|f| f.key) {
         let kinds: Vec<u8> = nal_units(&frame.data).iter().map(|u| u[0] & 0x1f).collect();
         assert!(kinds.contains(&7) && kinds.contains(&8), "{kinds:?}");
@@ -141,6 +144,14 @@ fn check(info: &Sending, seen: &[StreamEvent]) -> Vec<VideoPacket> {
         "only key frames: no prediction?"
     );
     assert!(frames.windows(2).all(|w| w[0].pts_us < w[1].pts_us));
+    // Stamped with the wall clock (latency is the `latency` example's).
+    let now = uwumirror_cast::latency::wall_clock_us();
+    assert!(
+        frames
+            .iter()
+            .all(|f| f.pts_us <= now && now - f.pts_us < 60_000_000),
+        "not wall-clock time"
+    );
     // Stopped here: the receiver saw the end, without a reason.
     assert!(
         matches!(seen.last(), Some(StreamEvent::Ended { reason: None, .. })),

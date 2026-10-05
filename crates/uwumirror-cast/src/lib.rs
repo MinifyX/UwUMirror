@@ -21,6 +21,7 @@
 
 pub mod discovery;
 pub mod h264;
+pub mod latency;
 pub mod protocol;
 pub mod receiver;
 #[cfg(windows)]
