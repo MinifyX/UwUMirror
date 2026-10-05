@@ -542,6 +542,10 @@
   flex: 1;
 }
 
+.toast-action {
+  flex-shrink: 0;
+}
+
 .toast[data-tone='error'] {
   border-color: color-mix(in srgb, var(--uwu-alarm) 55%, transparent);
   color: var(--uwu-alarm);

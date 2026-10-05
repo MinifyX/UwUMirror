@@ -12,6 +12,7 @@ picture gets from a phone onto the screen, and how all of it is tested.
 | `crates/uwumirror-android`  | Finding and running `adb`, pairing over wireless debugging, scrcpy's server and protocol                                  |
 | `crates/uwumirror-cast`     | UwUCast between two UwUMirrors: mDNS, the receiver, and on Windows the sender (capture, Media Foundation, loopback sound) |
 | `crates/uwumirror-miracast` | Miracast through Windows' own receiver: the session, `MediaPlayer`'s frame server, NV12 read back (Windows only)          |
+| `crates/uwumirror-firewall` | UwUMirror's own Windows Firewall rules: read through COM, set up with one UAC prompt (shared by the app and the setup)    |
 | `apps/desktop/src-tauri`    | The shell: starts the receiver and the Android side, the hub, commands for the page                                       |
 | `apps/desktop/src`          | The page: React, the players, the start page, settings                                                                    |
 | `apps/setup`                | The installer and uninstaller                                                                                             |
@@ -211,6 +212,25 @@ never queued. Without shared buffers (an old WebView2) pictures take the
 channel, at most two unacknowledged at a time. Re-encoding to H.264 for the
 existing path was the alternative, and wasn't needed.
 
+**The firewall** (`crates/uwumirror-firewall`). The picture comes into
+UwUMirror's own process as RTP over UDP, and the Wi-Fi Direct link counts as a
+_public_ network — which the rules Windows' own prompt makes on the first start
+(private only) don't cover: the phone connects, and `MediaPlayer` gives up with
+0xC00D4278. RTSP needs no rule (the receiver connects out to the phone). So
+UwUMirror sets up its own two rules, group `UwUMirror`: everything on private
+networks, and UDP on public networks from the local subnet only. Changing
+rules needs an administrator, UwUMirror runs without one: `ShellExecuteExW`
+with `runas` starts Windows PowerShell from System32, hidden, with the script
+as `-EncodedCommand` (UTF-16LE in base64, the program's path a single-quoted
+literal inside — no shell ever parses it), waits for it and reads its exit
+code; a declined prompt is `ERROR_CANCELLED`. Reading needs no administrator:
+`INetFwPolicy2` lists every rule, untranslated (unlike `netsh`'s output), and
+the check accepts any enabled rule that lets the program in, and counts a
+block rule against it. The setup runs it after installing (an option, on by
+default; never in its sandbox) and the uninstaller removes the rules; the app
+shows the state in Settings → Miracast, and offers the button when a Miracast
+picture doesn't come for ten seconds or the player gives up with that code.
+
 ## UwUCast (computer to computer)
 
 A Windows PC can't AirPlay, and Miracast needs Wi-Fi Direct and something
@@ -354,7 +374,12 @@ Everything that can be tested without a phone is:
   mirroring decryption across packets, AVCC to Annex B, audio decryption,
   resampling, the hub's cache, the platform-tools unpacking, UwUCast's
   messages and limits, NAL units and parameter sets, fitting the picture,
-  Miracast's states, picture sizes and NV12 packing, the frame message.
+  Miracast's states, picture sizes and NV12 packing, the frame message, the
+  firewall's scripts, quoting, encoding and what counts as set up.
+- **The firewall, read-only** (Windows): `cargo run -p uwumirror-firewall
+--example status -- <UwUMirror.exe>` prints what the real firewall says for
+  a program (`--scripts` prints the PowerShell it would run elevated). The
+  elevated path itself isn't run by any test: it would show a UAC prompt.
 
 The checks CI runs (`.github/workflows/ci.yml`), and what to run before a push:
 

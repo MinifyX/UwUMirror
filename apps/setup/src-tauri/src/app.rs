@@ -75,6 +75,58 @@ struct Info {
     platform: &'static str,
 }
 
+/// What became of the firewall rules (Windows), for the page to say.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(not(windows), allow(dead_code))]
+enum Firewall {
+    /// Not wanted, nothing to do, the sandbox, or not Windows.
+    Untouched,
+    Done,
+    /// The administrator prompt was declined.
+    Declined,
+    Failed,
+}
+
+/// How an install or uninstall went, beyond "it worked".
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Report {
+    firewall: Firewall,
+    firewall_error: Option<String>,
+}
+
+impl Report {
+    fn untouched() -> Self {
+        Self {
+            firewall: Firewall::Untouched,
+            firewall_error: None,
+        }
+    }
+
+    #[cfg(windows)]
+    fn from_firewall(outcome: Option<Result<(), uwumirror_firewall::Error>>) -> Self {
+        let (firewall, firewall_error) = match outcome {
+            None => (Firewall::Untouched, None),
+            Some(Ok(())) => (Firewall::Done, None),
+            Some(Err(uwumirror_firewall::Error::Declined)) => (Firewall::Declined, None),
+            Some(Err(error)) => (Firewall::Failed, Some(error.to_string())),
+        };
+        Self {
+            firewall,
+            firewall_error,
+        }
+    }
+}
+
+/// The setup window, for the administrator prompt to belong to.
+#[cfg(windows)]
+fn window_handle(app: &AppHandle) -> Option<isize> {
+    app.get_webview_window("main")
+        .and_then(|window| window.hwnd().ok())
+        .map(|hwnd| hwnd.0 as isize)
+}
+
 #[derive(Clone, Serialize)]
 struct ProgressEvent {
     step: Step,
@@ -185,7 +237,7 @@ impl Drop for BusyGuard<'_> {
 }
 
 #[tauri::command]
-async fn install(app: AppHandle, options: Options) -> Result<(), String> {
+async fn install(app: AppHandle, options: Options) -> Result<Report, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let setup = app.state::<Setup>();
         let _busy = guard(&setup)?;
@@ -196,14 +248,37 @@ async fn install(app: AppHandle, options: Options) -> Result<(), String> {
             (Step::Register, 0.12),
         ];
         let mut progress = reporter(&app, WEIGHTS);
-        install::install(&setup.layout, &options, VERSION, &mut progress)
+        // "Done" waits until the firewall is set up, too.
+        let mut until_done = |step: Step, fraction: f64| {
+            if step != Step::Done {
+                progress(step, fraction);
+            }
+        };
+        install::install(&setup.layout, &options, VERSION, &mut until_done)?;
+        // After the files: a "no" to the administrator prompt must not cost
+        // the install. The app can set the firewall up later.
+        #[cfg(windows)]
+        let report = if options.firewall {
+            let dir = PathBuf::from(options.dir.trim());
+            Report::from_firewall(install::set_up_firewall(
+                &setup.layout,
+                &dir,
+                window_handle(&app),
+            ))
+        } else {
+            Report::untouched()
+        };
+        #[cfg(not(windows))]
+        let report = Report::untouched();
+        progress(Step::Done, 1.0);
+        Ok(report)
     })
     .await
     .map_err(|e| format!("Setup stopped unexpectedly: {e}"))?
 }
 
 #[tauri::command]
-async fn uninstall(app: AppHandle, keep_data: bool) -> Result<(), String> {
+async fn uninstall(app: AppHandle, keep_data: bool) -> Result<Report, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let setup = app.state::<Setup>();
         let _busy = guard(&setup)?;
@@ -216,7 +291,18 @@ async fn uninstall(app: AppHandle, keep_data: bool) -> Result<(), String> {
             (Step::Cleanup, 0.3),
         ];
         let mut progress = reporter(&app, WEIGHTS);
-        install::uninstall(&setup.layout, &dir, keep_data, &mut progress)
+        // The rules first, while nothing is gone yet; a "no" leaves them and
+        // carries on.
+        #[cfg(windows)]
+        let report = Report::from_firewall(install::remove_firewall(
+            &setup.layout,
+            &dir,
+            window_handle(&app),
+        ));
+        #[cfg(not(windows))]
+        let report = Report::untouched();
+        install::uninstall(&setup.layout, &dir, keep_data, &mut progress)?;
+        Ok(report)
     })
     .await
     .map_err(|e| format!("Setup stopped unexpectedly: {e}"))?
@@ -400,6 +486,21 @@ fn system_is_german() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn tells_the_page_what_became_of_the_firewall() {
+        use uwumirror_firewall::Error;
+        let report = |outcome| Report::from_firewall(outcome).firewall;
+        assert_eq!(report(None), Firewall::Untouched);
+        assert_eq!(report(Some(Ok(()))), Firewall::Done);
+        assert_eq!(report(Some(Err(Error::Declined))), Firewall::Declined);
+        let failed = Report::from_firewall(Some(Err(Error::Failed("exit code 1".into()))));
+        assert_eq!(failed.firewall, Firewall::Failed);
+        assert_eq!(failed.firewall_error.as_deref(), Some("exit code 1"));
+        let json = serde_json::to_string(&Report::from_firewall(Some(Ok(())))).unwrap();
+        assert_eq!(json, r#"{"firewall":"done","firewallError":null}"#);
+    }
 
     #[test]
     fn reads_the_modes() {

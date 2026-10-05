@@ -17,5 +17,8 @@
   "Für H.264 braucht die WebView GStreamers Plugins: Pakete gstreamer1.0-libav und gstreamer1.0-plugins-good (Arch: gst-libav, gst-plugins-good).": "For H.264 the webview needs GStreamer's plugins: the packages gstreamer1.0-libav and gstreamer1.0-plugins-good (Arch: gst-libav, gst-plugins-good).",
   "Der Video-Decoder des Systems hat das Bild abgelehnt.": "The system's video decoder refused the picture.",
   "Pausiert – der Bildschirm ist gesperrt oder die App im Hintergrund.": "Paused – the screen is locked or the app is in the background.",
-  "Dekodiert mit {backend}": "Decoded with {backend}"
+  "Dekodiert mit {backend}": "Decoded with {backend}",
+  "Kommt kein Bild? Wahrscheinlich hält die Firewall es auf: Miracast läuft über Wi-Fi Direct, und das zählt für Windows als öffentliches Netzwerk.": "No picture? The firewall is probably holding it back: Miracast runs over Wi-Fi Direct, which Windows counts as a public network.",
+  "Eingerichtet. Verbinde das Gerät neu, falls das Bild nicht kommt.": "Set up. Connect the device again if the picture doesn't come.",
+  "Fragt einmal nach Administratorrechten.": "Asks for administrator rights once."
 }

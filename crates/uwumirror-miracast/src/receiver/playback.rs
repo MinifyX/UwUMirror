@@ -343,7 +343,13 @@ impl Playback {
                     .and_then(|args| args.ExtendedErrorCode().ok())
                     .map(|code| format!("{:#010x}", code.0 as u32));
                 tracing::warn!(%reason, ?error, ?code, id, "Miracast: playback failed");
-                on_end(Some(reason));
+                // The code goes along: the page recognises a firewall that
+                // holds the picture back by it (0xc00d4278, "the server
+                // didn't answer in time").
+                on_end(Some(match code {
+                    Some(code) => format!("{reason}, {code}"),
+                    None => reason,
+                }));
                 Ok(())
             }
         }))?;

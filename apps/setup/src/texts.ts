@@ -15,6 +15,14 @@ const de = {
   folder: 'Speicherort',
   change: 'Ändern …',
   desktopShortcut: 'Verknüpfung auf dem Desktop',
+  firewall: 'Firewall für Miracast einrichten',
+  firewallHint: 'Fragt einmal nach Administratorrechten.',
+  firewallDeclined:
+    'Die Firewall ist noch nicht eingerichtet. Fragt sie beim ersten Start, erlaube private Netzwerke. Für Miracast: in UwUMirror unter Einstellungen → Miracast → Firewall.',
+  firewallFailed:
+    'Die Firewall ließ sich nicht einrichten ({error}). Fragt sie beim ersten Start, erlaube private Netzwerke. Für Miracast: in UwUMirror unter Einstellungen → Miracast → Firewall.',
+  firewallKept:
+    'Die Firewall-Regeln von UwUMirror sind geblieben. Du findest sie unter Windows-Sicherheit → Firewall & Netzwerkschutz → Erweiterte Einstellungen → Eingehende Regeln (Gruppe „UwUMirror“).',
   runningTitle: 'UwUMirror ist gerade offen',
   runningBody:
     'Ich schließe es kurz, damit ich weitermachen kann. Laufende Spiegelungen werden dabei beendet.',
@@ -37,8 +45,9 @@ const de = {
   tips: [
     'iPhone, iPad oder Mac: im Kontrollzentrum auf Bildschirmsynchronisierung tippen und diesen Rechner wählen.',
     'Android: in den Entwickleroptionen „Kabelloses Debugging“ einschalten und per QR-Code koppeln – oder per USB.',
-    'Fragt die Firewall beim ersten Start, erlaube private Netzwerke. Sonst finden dich deine Geräte nicht.',
   ],
+  firewallTip:
+    'Fragt die Firewall beim ersten Start, erlaube private Netzwerke. Sonst finden dich deine Geräte nicht.',
   start: 'UwUMirror starten',
   close: 'Schließen',
   errorTitle: 'Hoppla, das hat nicht geklappt',
@@ -79,6 +88,14 @@ const en: typeof de = {
   folder: 'Location',
   change: 'Change …',
   desktopShortcut: 'Shortcut on the desktop',
+  firewall: 'Set up the firewall for Miracast',
+  firewallHint: 'Asks for administrator rights once.',
+  firewallDeclined:
+    "The firewall isn't set up yet. If it asks on the first start, allow private networks. For Miracast: in UwUMirror under Settings → Miracast → Firewall.",
+  firewallFailed:
+    "The firewall couldn't be set up ({error}). If it asks on the first start, allow private networks. For Miracast: in UwUMirror under Settings → Miracast → Firewall.",
+  firewallKept:
+    "UwUMirror's firewall rules are still there. You'll find them in Windows Security → Firewall & network protection → Advanced settings → Inbound Rules (group “UwUMirror”).",
   runningTitle: 'UwUMirror is open right now',
   runningBody: "I'll close it for a moment so I can carry on. Running mirrors will be stopped.",
   closeAndContinue: 'Close and continue',
@@ -100,8 +117,9 @@ const en: typeof de = {
   tips: [
     'iPhone, iPad or Mac: tap Screen Mirroring in Control Center and pick this computer.',
     'Android: turn on "Wireless debugging" in the developer options and pair with the QR code – or use USB.',
-    'If the firewall asks on the first start, allow private networks. Otherwise your devices won’t find you.',
   ],
+  firewallTip:
+    'If the firewall asks on the first start, allow private networks. Otherwise your devices won’t find you.',
   start: 'Start UwUMirror',
   close: 'Close',
   errorTitle: "Oops, that didn't work",

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, errorText, type AirplayStatus, type CastStatus } from '../../lib/api';
 import { t } from '../../lib/i18n';
+import { refreshFirewall, setUpFirewall, useFirewall } from '../../lib/firewall';
 import { useMiracast } from '../../lib/miracast';
 import { platform, systemDoesAirplay } from '../../lib/platform';
 import { receiverName, updateSettings, type Settings } from '../../lib/settings';
@@ -198,6 +199,7 @@ export function Miracast({ settings }: { settings: Settings }) {
           label={t('Ton über Miracast')}
         />
       </Row>
+      {miracast?.state !== 'unsupported' && <FirewallRow />}
       <details className="how-to">
         <summary>{t('So spiegelt ein Handy hierher')}</summary>
         <ol className="steps">
@@ -273,6 +275,61 @@ export function Cast({
         </ol>
       </details>
       {status?.running && <Firewall port={status.port ?? 7100} />}
+    </>
+  );
+}
+
+/**
+ * Windows' firewall: whether Miracast's picture gets through, and a button
+ * that sets it up with one administrator prompt. Nothing elsewhere.
+ */
+function FirewallRow() {
+  const { status, busy } = useFirewall();
+  const [result, setResult] = useState<{ text: string; error: boolean } | null>(null);
+
+  useEffect(() => {
+    void refreshFirewall();
+  }, []);
+
+  if (!status?.needed) return null;
+  const description = status.error
+    ? t('Die Firewall lässt sich nicht lesen: {error}', { error: status.error })
+    : status.ready
+      ? t('Eingerichtet. Miracast-Bilder kommen auch über Wi-Fi Direct herein.')
+      : t(
+          'Fehlt. Miracast läuft über Wi-Fi Direct, und das zählt für Windows als öffentliches Netzwerk. Einrichten fragt einmal nach Administratorrechten.',
+        );
+  return (
+    <>
+      <Row label={t('Firewall')} description={description}>
+        {status.ready ? (
+          <span className="pill" data-state="online">
+            {t('Eingerichtet')}
+          </span>
+        ) : (
+          <button
+            data-secondary
+            disabled={busy}
+            onClick={() => {
+              setResult(null);
+              void setUpFirewall().then((outcome) =>
+                setResult(
+                  outcome.ok
+                    ? { text: t('Eingerichtet. Miracast darf jetzt herein.'), error: false }
+                    : { text: outcome.text, error: !outcome.declined },
+                ),
+              );
+            }}
+          >
+            {busy ? t('Wartet…') : t('Einrichten')}
+          </button>
+        )}
+      </Row>
+      {result && (
+        <p className="setting-result" data-tone={result.error ? 'error' : undefined}>
+          {result.text}
+        </p>
+      )}
     </>
   );
 }

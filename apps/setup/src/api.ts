@@ -5,6 +5,16 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 export interface Options {
   dir: string;
   desktopShortcut: boolean;
+  /** Windows: set up the firewall for Miracast (one administrator prompt). */
+  firewall?: boolean;
+}
+
+/** What became of the firewall rules: Windows asks for an administrator. */
+export type FirewallOutcome = 'untouched' | 'done' | 'declined' | 'failed';
+
+export interface Report {
+  firewall: FirewallOutcome;
+  firewallError: string | null;
 }
 
 export interface Info {
@@ -29,8 +39,8 @@ export interface SetupApi {
   info(): Promise<Info>;
   pickFolder(current: string): Promise<string | null>;
   closeApp(): Promise<void>;
-  install(options: Options): Promise<void>;
-  uninstall(keepData: boolean): Promise<void>;
+  install(options: Options): Promise<Report>;
+  uninstall(keepData: boolean): Promise<Report>;
   launchApp(): Promise<void>;
   /** macOS and Linux: switch to uninstalling the installed UwUMirror. */
   beginUninstall(): Promise<void>;
@@ -57,21 +67,26 @@ const tauriApi: SetupApi = {
 
 /**
  * Pretends to install, for working on the page in a normal browser.
- * `?mode=uninstall`, `?installed`, `?running`, `?fail` and `?platform=macos|linux` show the
- * other states.
+ * `?mode=uninstall`, `?installed`, `?running`, `?fail`, `?firewall=declined|failed` and
+ * `?platform=macos|linux` show the other states.
  */
 function previewApi(): SetupApi {
   const params = new URLSearchParams(window.location.search);
   const listeners = new Set<(progress: Progress) => void>();
   let running = params.has('running');
   const dir = 'C:\\Users\\Nyu\\AppData\\Local\\Programs\\UwUMirror';
-  const pretend = async (steps: Step[]) => {
+  const pretend = async (steps: Step[]): Promise<Report> => {
     for (let i = 1; i <= 40; i += 1) {
       await new Promise((resolve) => setTimeout(resolve, 60));
       const step = steps[Math.min(steps.length - 1, Math.floor((i / 40) * steps.length))]!;
       for (const listener of listeners) listener({ step, overall: i / 40 });
     }
     if (params.has('fail')) throw `Couldn't write ${dir}\\UwUMirror.exe`;
+    const firewall = (params.get('firewall') as FirewallOutcome | null) ?? 'done';
+    return {
+      firewall,
+      firewallError: firewall === 'failed' ? 'PowerShell couldn’t change the firewall' : null,
+    };
   };
   return {
     info: async () => ({
@@ -79,7 +94,7 @@ function previewApi(): SetupApi {
       version: '0.1.0',
       installed:
         params.get('mode') || params.has('installed') ? { dir, version: '0.1.0-beta.1' } : null,
-      options: { dir, desktopShortcut: true },
+      options: { dir, desktopShortcut: true, firewall: true },
       appRunning: running,
       hasPayload: true,
       sandbox: false,

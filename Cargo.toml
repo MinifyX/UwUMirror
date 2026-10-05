@@ -6,6 +6,7 @@ members = [
   "crates/uwumirror-android",
   "crates/uwumirror-cast",
   "crates/uwumirror-miracast",
+  "crates/uwumirror-firewall",
   "apps/desktop/src-tauri",
   "apps/setup/src-tauri",
 ]
@@ -23,6 +24,7 @@ uwumirror-airplay = { path = "crates/uwumirror-airplay" }
 uwumirror-android = { path = "crates/uwumirror-android" }
 uwumirror-cast = { path = "crates/uwumirror-cast" }
 uwumirror-miracast = { path = "crates/uwumirror-miracast" }
+uwumirror-firewall = { path = "crates/uwumirror-firewall" }
 
 anyhow = "1"
 parking_lot = "0.12"

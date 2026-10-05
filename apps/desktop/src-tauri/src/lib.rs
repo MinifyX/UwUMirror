@@ -342,6 +342,49 @@ async fn miracast_apply(
     })
 }
 
+/// Whether phones get through Windows' firewall to this program, Miracast's
+/// picture included (Settings → Miracast). Reading needs no administrator.
+/// Elsewhere there's nothing to set up.
+#[tauri::command]
+async fn firewall_status() -> Result<uwumirror_firewall::Status> {
+    tokio::task::spawn_blocking(|| {
+        let exe = std::env::current_exe().map_err(text)?;
+        Ok(uwumirror_firewall::status(&exe))
+    })
+    .await
+    .map_err(text)?
+}
+
+/// Sets up UwUMirror's firewall rules for this program: one administrator
+/// prompt (UAC), then the new state. Fails with `declined` when the prompt
+/// was declined.
+#[tauri::command]
+async fn firewall_setup(window: tauri::WebviewWindow) -> Result<uwumirror_firewall::Status> {
+    #[cfg(windows)]
+    {
+        // The prompt belongs to this window.
+        let parent = window.hwnd().ok().map(|hwnd| hwnd.0 as isize);
+        tokio::task::spawn_blocking(move || {
+            let exe = std::env::current_exe().map_err(text)?;
+            match uwumirror_firewall::set_up(&exe, parent) {
+                Ok(()) => Ok(uwumirror_firewall::status(&exe)),
+                Err(uwumirror_firewall::Error::Declined) => Err("declined".to_owned()),
+                Err(error) => {
+                    tracing::warn!(%error, "firewall");
+                    Err(error.to_string())
+                }
+            }
+        })
+        .await
+        .map_err(text)?
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = window;
+        Ok(uwumirror_firewall::Status::not_needed())
+    }
+}
+
 #[tauri::command]
 async fn stream_stop(state: State<'_, AppState>, id: u64) -> Result<bool> {
     Ok(stop_stream(&state, id).await)
@@ -567,6 +610,8 @@ pub fn run() {
             android_download_adb,
             android_choose_adb,
             miracast_apply,
+            firewall_status,
+            firewall_setup,
             frame_done,
             cast::cast_apply,
             cast::cast_receivers,

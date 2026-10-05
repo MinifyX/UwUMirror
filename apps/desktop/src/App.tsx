@@ -13,6 +13,7 @@ import {
 } from './lib/api';
 import { useAdb, useAdbDevices } from './lib/android';
 import { t, useLanguage } from './lib/i18n';
+import { looksLikeFirewall, refreshFirewall, setUpFirewall } from './lib/firewall';
 import { applyMiracast } from './lib/miracast';
 import { platform, systemDoesAirplay } from './lib/platform';
 import { getSettings, RESOLUTIONS, receiverName, useSettings } from './lib/settings';
@@ -89,15 +90,40 @@ export function App() {
         setActiveId(null);
         setWindowFullscreen(false);
       }
-      showToast(
-        ended.reason
-          ? t('{name}: Spiegelung abgebrochen ({reason})', {
-              name: ended.name,
-              reason: ended.reason,
-            })
-          : t('{name} hat die Spiegelung beendet.', { name: ended.name }),
-        ended.reason ? 'error' : 'info',
-      );
+      const plain = () =>
+        showToast(
+          ended.reason
+            ? t('{name}: Spiegelung abgebrochen ({reason})', {
+                name: ended.name,
+                reason: ended.reason,
+              })
+            : t('{name} hat die Spiegelung beendet.', { name: ended.name }),
+          ended.reason ? 'error' : 'info',
+        );
+      // Windows' player waited in vain for Miracast's picture: most often the
+      // firewall, which a button can set up.
+      if (ended.kind !== 'miracast' || !looksLikeFirewall(ended.reason)) return plain();
+      void refreshFirewall().then((status) => {
+        if (!status?.needed || status.miracast) return plain();
+        showToast(
+          t('{name}: Das Bild kam nicht an. Wahrscheinlich hält die Firewall es auf.', {
+            name: ended.name,
+          }),
+          'error',
+          {
+            label: t('Firewall einrichten'),
+            run: () =>
+              void setUpFirewall().then((outcome) =>
+                showToast(
+                  outcome.ok
+                    ? t('Firewall eingerichtet. Verbinde {name} neu.', { name: ended.name })
+                    : outcome.text,
+                  outcome.ok || outcome.declined ? 'info' : 'error',
+                ),
+              ),
+          },
+        );
+      });
     });
     return () => {
       offStart();

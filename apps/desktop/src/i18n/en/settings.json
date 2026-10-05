@@ -81,5 +81,12 @@
   "Windows-PCs: Dort oben auf „Senden“ klicken und „{name}“ wählen – fertig.": "Windows PCs: click “Send” at the top there and pick “{name}” – done.",
   "Miracast": "Miracast",
   "Offen fürs lokale Netz.": "Open to the local network.",
-  "So heißt dieser Computer, wenn ein anderer hierher senden will.": "What other computers see this one as when they send here."
+  "So heißt dieser Computer, wenn ein anderer hierher senden will.": "What other computers see this one as when they send here.",
+  "Firewall": "Firewall",
+  "Die Firewall lässt sich nicht lesen: {error}": "The firewall can't be read: {error}",
+  "Eingerichtet. Miracast-Bilder kommen auch über Wi-Fi Direct herein.": "Set up. Miracast pictures get in over Wi-Fi Direct too.",
+  "Fehlt. Miracast läuft über Wi-Fi Direct, und das zählt für Windows als öffentliches Netzwerk. Einrichten fragt einmal nach Administratorrechten.": "Missing. Miracast runs over Wi-Fi Direct, which Windows counts as a public network. Setting it up asks for administrator rights once.",
+  "Eingerichtet": "Set up",
+  "Eingerichtet. Miracast darf jetzt herein.": "Set up. Miracast may come in now.",
+  "Einrichten": "Set up"
 }

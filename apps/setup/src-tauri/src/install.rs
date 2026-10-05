@@ -6,9 +6,13 @@
 //! (and on the desktop if wanted), and registry entries under
 //! `HKEY_CURRENT_USER`. No administrator rights are needed.
 //!
-//! What the setup doesn't do is open the firewall: that needs an
-//! administrator. Windows asks by itself the first time UwUMirror listens for
-//! AirPlay, and "private networks" is the answer that lets phones in.
+//! The firewall is the one thing that needs an administrator. If wanted (the
+//! default), the setup asks once, after the files are in place, and sets up
+//! UwUMirror's two rules (see the `uwumirror-firewall` crate); Windows' own
+//! prompt on the first start would only open private networks, and Miracast's
+//! Wi-Fi Direct link counts as public. Saying no there doesn't stop the
+//! install: the app can do it later. The uninstaller removes the rules again,
+//! with one more prompt, if there are any.
 //!
 //! `UWUMIRROR_SETUP_SANDBOX=<folder>` redirects all of it (files, shortcuts,
 //! registry under `HKCU\Software\UwUMirror-Setup-Sandbox`) for testing.
@@ -53,6 +57,9 @@ pub fn has_payload() -> bool {
 pub struct Options {
     pub dir: String,
     pub desktop_shortcut: bool,
+    /// Set up the firewall for Miracast (one administrator prompt).
+    #[serde(default)]
+    pub firewall: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -157,8 +164,38 @@ impl Layout {
         Options {
             dir,
             desktop_shortcut: flag("DesktopShortcut", true),
+            firewall: flag("Firewall", true),
         }
     }
+}
+
+/// Sets up UwUMirror's firewall rules for the program in `dir`, asking once
+/// for an administrator. `None` in the sandbox, which never touches the real
+/// firewall.
+pub fn set_up_firewall(
+    layout: &Layout,
+    dir: &Path,
+    parent: Option<isize>,
+) -> Option<Result<(), uwumirror_firewall::Error>> {
+    if layout.sandbox {
+        return None;
+    }
+    Some(uwumirror_firewall::set_up(&dir.join(APP_EXE), parent))
+}
+
+/// Removes UwUMirror's firewall rules (and those Windows made for the
+/// program), asking once for an administrator. `None` in the sandbox, and
+/// when there is nothing to remove — then nobody is asked.
+pub fn remove_firewall(
+    layout: &Layout,
+    dir: &Path,
+    parent: Option<isize>,
+) -> Option<Result<(), uwumirror_firewall::Error>> {
+    let exe = dir.join(APP_EXE);
+    if layout.sandbox || !uwumirror_firewall::has_rules(&exe) {
+        return None;
+    }
+    Some(uwumirror_firewall::remove(&exe, parent))
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -461,6 +498,7 @@ fn register(layout: &Layout, dir: &Path, options: &Options, version: &str) -> Re
     write(&setup, "InstallDir", &dir.display().to_string())?;
     write(&setup, "Version", version)?;
     write_dword(&setup, "DesktopShortcut", options.desktop_shortcut.into())?;
+    write_dword(&setup, "Firewall", options.firewall.into())?;
     Ok(())
 }
 
@@ -560,6 +598,16 @@ mod tests {
         let options = sandbox.layout.remembered_options();
         assert!(options.dir.ends_with(r"Programs\UwUMirror"));
         assert!(options.desktop_shortcut);
+        assert!(options.firewall, "the firewall is set up unless unticked");
+    }
+
+    #[test]
+    fn the_sandbox_never_touches_the_firewall() {
+        let sandbox = Sandbox::new();
+        let dir = sandbox.layout.default_dir.clone();
+        // Both would ask for an administrator outside the sandbox.
+        assert!(set_up_firewall(&sandbox.layout, &dir, None).is_none());
+        assert!(remove_firewall(&sandbox.layout, &dir, None).is_none());
     }
 
     #[test]
@@ -574,12 +622,14 @@ mod tests {
         let options = Options {
             dir: dir.display().to_string(),
             desktop_shortcut: false,
+            firewall: false,
         };
         register(layout, &dir, &options, "0.1.0").unwrap();
 
         let installed = layout.installed().unwrap();
         assert_eq!(installed.version.as_deref(), Some("0.1.0"));
         assert!(!layout.remembered_options().desktop_shortcut);
+        assert!(!layout.remembered_options().firewall);
         let command: String = layout
             .open(UNINSTALL_KEY)
             .unwrap()

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { AudioStatus } from '../lib/api';
 import { streamIcon, streamSource } from '../lib/devices';
 import { t, useLanguage } from '../lib/i18n';
+import { refreshFirewall, setUpFirewall, useFirewall } from '../lib/firewall';
 import { useMiracast } from '../lib/miracast';
 import { fullscreenShortcut, platform, shortcut } from '../lib/platform';
 import type { PlayerInfo } from '../lib/player';
@@ -17,6 +18,9 @@ type Props = {
   /** Back to the start page; the mirroring goes on. */
   onHome: () => void;
 };
+
+/** How long a Miracast stream waits for its first picture before the firewall hint. */
+const FIREWALL_HINT_AFTER_MS = 10_000;
 
 const BACKENDS = {
   webcodecs: 'WebCodecs',
@@ -78,6 +82,22 @@ export function StreamView({ stream, fullscreen, onToggleFullscreen, onStop, onH
   // A Miracast sender may ask for a PIN before it sends its picture.
   const miracast = useMiracast();
   const pin = stream.kind === 'miracast' ? miracast?.pin : null;
+  // A Miracast picture that doesn't come is most often held back by the
+  // firewall: after a while, say so if it isn't set up.
+  const [slow, setSlow] = useState(false);
+  const slowMiracast = waiting && !pin && stream.kind === 'miracast';
+  useEffect(() => {
+    if (!slowMiracast) return;
+    const timer = window.setTimeout(() => {
+      setSlow(true);
+      void refreshFirewall();
+    }, FIREWALL_HINT_AFTER_MS);
+    return () => window.clearTimeout(timer);
+  }, [slowMiracast]);
+  const firewall = useFirewall();
+  const [firewallResult, setFirewallResult] = useState<string | null>(null);
+  const firewallHint =
+    slow && slowMiracast && !!firewall.status?.needed && !firewall.status.miracast;
 
   const bar = (
     <>
@@ -161,7 +181,36 @@ export function StreamView({ stream, fullscreen, onToggleFullscreen, onStop, onH
             ) : (
               <>
                 <p className="stage-title">{t('Warte auf das erste Bild…')}</p>
-                <p>{t('Das dauert meist nur einen Moment.')}</p>
+                {firewallHint ? (
+                  <>
+                    <p>
+                      {t(
+                        'Kommt kein Bild? Wahrscheinlich hält die Firewall es auf: Miracast läuft über Wi-Fi Direct, und das zählt für Windows als öffentliches Netzwerk.',
+                      )}
+                    </p>
+                    <button
+                      className="primary stage-action"
+                      disabled={firewall.busy}
+                      onClick={() => {
+                        setFirewallResult(null);
+                        void setUpFirewall().then((outcome) =>
+                          setFirewallResult(
+                            outcome.ok
+                              ? t(
+                                  'Eingerichtet. Verbinde das Gerät neu, falls das Bild nicht kommt.',
+                                )
+                              : outcome.text,
+                          ),
+                        );
+                      }}
+                    >
+                      {firewall.busy ? t('Wartet…') : t('Firewall einrichten')}
+                    </button>
+                    <p>{firewallResult ?? t('Fragt einmal nach Administratorrechten.')}</p>
+                  </>
+                ) : (
+                  <p>{firewallResult ?? t('Das dauert meist nur einen Moment.')}</p>
+                )}
               </>
             )}
           </div>

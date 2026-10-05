@@ -1,6 +1,6 @@
 import clsx from 'clsx';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { api, type Info, type Options } from './api';
+import { api, type Info, type Options, type Report } from './api';
 import {
   DoneScene,
   ErrorScene,
@@ -212,6 +212,20 @@ function Stage({
   );
 }
 
+/** The last tip, about the firewall. With UwUMirror's own rules in place Windows won't ask. */
+function firewallTip(report: Report | null): string[] {
+  switch (report?.firewall) {
+    case 'done':
+      return [];
+    case 'declined':
+      return [t.firewallDeclined];
+    case 'failed':
+      return [fill(t.firewallFailed, { error: report.firewallError ?? '' })];
+    default:
+      return [t.firewallTip];
+  }
+}
+
 export function App() {
   const [info, setInfo] = useState<Info | null>(null);
   const [screen, setScreen] = useState<Screen>('loading');
@@ -224,6 +238,7 @@ export function App() {
   const [error, setError] = useState('');
   const [muted, setMuted] = useState(false);
   const [keepData, setKeepData] = useState(true);
+  const [report, setReport] = useState<Report | null>(null);
   const mutedRef = useRef(muted);
 
   useEffect(() => {
@@ -238,8 +253,7 @@ export function App() {
     setScreen('working');
     const begin = Date.now();
     try {
-      if (kind === 'uninstall') await api.uninstall(keep);
-      else await api.install(chosen);
+      setReport(kind === 'uninstall' ? await api.uninstall(keep) : await api.install(chosen));
       await wait(Math.max(0, MIN_WORKING_MS - (Date.now() - begin)));
       setTarget(1);
       await wait(350);
@@ -372,6 +386,14 @@ export function App() {
                 label={t.desktopShortcut}
               />
             )}
+            {info.platform === 'windows' && (
+              <Switch
+                checked={options.firewall ?? true}
+                onChange={(firewall) => setOptions({ ...options, firewall })}
+                label={t.firewall}
+                hint={t.firewallHint}
+              />
+            )}
           </div>
         )}
         {installed && info.platform !== 'windows' && !showOptions && (
@@ -468,7 +490,7 @@ export function App() {
             {t.tipsTitle}
           </p>
           <ul className="flex flex-col gap-1.5">
-            {t.tips.map((tip) => (
+            {[...t.tips, ...firewallTip(report)].map((tip) => (
               <li key={tip} className="flex gap-2 text-[13px] leading-snug">
                 <Icon path={ICONS.check} className="text-pink mt-0.5 size-3.5 shrink-0" />
                 {tip}
@@ -544,6 +566,11 @@ export function App() {
   return shell(
     <div className="my-auto flex w-full flex-col items-center pb-10">
       <Stage scene={<GoodbyeScene />} title={t.goodbyeTitle} body={t.goodbyeBody} />
+      {(report?.firewall === 'declined' || report?.firewall === 'failed') && (
+        <p className="text-plum-soft setup-fade mt-4 w-full rounded-2xl bg-white/80 px-4 py-2.5 text-center text-[12.5px] leading-snug">
+          {t.firewallKept}
+        </p>
+      )}
       <div className="pt-6">
         <Button autoFocus onClick={() => void api.finish()}>
           {t.close}

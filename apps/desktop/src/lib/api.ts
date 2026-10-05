@@ -102,6 +102,20 @@ export type MiracastStatus = {
   error: string | null;
 };
 
+/** Windows' firewall for this program (`crates/uwumirror-firewall`). */
+export type FirewallStatus = {
+  /** False where there's nothing to set up (not Windows). */
+  needed: boolean;
+  /** Private networks let UwUMirror in. */
+  private: boolean;
+  /** Public networks — Miracast's Wi-Fi Direct — let its picture in. */
+  miracast: boolean;
+  /** UwUMirror's own two rules are there. */
+  ours: boolean;
+  ready: boolean;
+  error: string | null;
+};
+
 /**
  * One decoded picture (Miracast's), NV12. `done` must be called once the
  * picture is no longer needed: it gives its memory back to Rust.
@@ -165,6 +179,9 @@ export const api = {
   androidChooseAdb: (path: string | null) => invoke<void>('android_choose_adb', { path }),
   miracastApply: (settings: { enabled: boolean; audio: boolean }) =>
     invoke<MiracastStatus>('miracast_apply', { settings }),
+  firewallStatus: () => invoke<FirewallStatus>('firewall_status'),
+  /** One administrator prompt; rejects with `declined` when it was declined. */
+  firewallSetup: () => invoke<FirewallStatus>('firewall_setup'),
   castApply: (settings: CastSettings) => invoke<CastStatus>('cast_apply', { settings }),
   castReceivers: () => invoke<CastReceiver[]>('cast_receivers'),
   castSend: (id: string, name: string) => invoke<SendStatus>('cast_send', { id, name }),
