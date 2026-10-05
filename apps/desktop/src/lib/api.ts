@@ -5,7 +5,7 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 
-export type StreamKind = 'airplay' | 'airplayaudio' | 'android';
+export type StreamKind = 'airplay' | 'airplayaudio' | 'android' | 'cast';
 
 export type AudioStatus = 'playing' | 'noDecoder' | 'noOutput' | 'unavailable' | 'off';
 
@@ -26,7 +26,13 @@ export type StreamMessage =
   | { type: 'updated'; stream: StreamState }
   | { type: 'ended'; id: number; name: string; kind: StreamKind; reason: string | null };
 
-export type AppInfo = { version: string; ffmpeg: number | null; scrcpy: string };
+export type AppInfo = {
+  version: string;
+  ffmpeg: number | null;
+  scrcpy: string;
+  /** This build can send its screen (Windows). */
+  castSend: boolean;
+};
 
 export type AirplaySettings = {
   enabled: boolean;
@@ -64,6 +70,30 @@ export type MirrorOptions = { maxSize: number; bitRate: number; maxFps: number; 
 
 export type VideoPacket = { id: number; key: boolean; pts: number; data: Uint8Array };
 
+/** Receiving from other computers' UwUMirror (UwUCast). */
+export type CastSettings = { enabled: boolean; name: string };
+
+export type CastStatus = { running: boolean; port: number | null; error: string | null };
+
+/** Another computer's UwUMirror, found on the network. */
+export type CastReceiver = { id: string; name: string; version: string; compatible: boolean };
+
+export type SendEnd = { how: 'stopped' } | { how: 'byReceiver' } | { how: 'failed'; error: string };
+
+/** Sending this screen; `ended` is set once, right after it ended. */
+export type SendStatus = {
+  state: 'idle' | 'connecting' | 'sending';
+  id: string | null;
+  receiver: string | null;
+  width: number;
+  height: number;
+  fps: number;
+  encoder: string | null;
+  hardware: boolean;
+  audio: boolean;
+  ended: SendEnd | null;
+};
+
 export const api = {
   computerName: () => invoke<string>('computer_name'),
   appInfo: () => invoke<AppInfo>('app_info'),
@@ -84,6 +114,11 @@ export const api = {
     invoke<number>('android_mirror', { serial, options }),
   androidDownloadAdb: () => invoke<string>('android_download_adb'),
   androidChooseAdb: (path: string | null) => invoke<void>('android_choose_adb', { path }),
+  castApply: (settings: CastSettings) => invoke<CastStatus>('cast_apply', { settings }),
+  castReceivers: () => invoke<CastReceiver[]>('cast_receivers'),
+  castSend: (id: string, name: string) => invoke<SendStatus>('cast_send', { id, name }),
+  castSendStatus: () => invoke<SendStatus>('cast_send_status'),
+  castSendStop: () => invoke<void>('cast_send_stop'),
   openLink: (url: string) => invoke<void>('open_link', { url }),
   logDetail: (on: boolean) => invoke<void>('log_detail', { on }),
   openLogFolder: () => invoke<void>('open_log_folder'),
@@ -92,6 +127,11 @@ export const api = {
 /** Stream starts, changes and ends. */
 export function onStreamMessage(handler: (message: StreamMessage) => void): Promise<UnlistenFn> {
   return listen<StreamMessage>('stream', (event) => handler(event.payload));
+}
+
+/** Sending this screen: every change of state (see `src-tauri/src/cast.rs`). */
+export function onCastSend(handler: (status: SendStatus) => void): Promise<UnlistenFn> {
+  return listen<SendStatus>('cast-send', (event) => handler(event.payload));
 }
 
 /** Parses one binary video message (layout in `src-tauri/src/hub.rs`). */

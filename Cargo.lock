@@ -5073,6 +5073,7 @@ dependencies = [
  "tracing-subscriber",
  "uwumirror-airplay",
  "uwumirror-android",
+ "uwumirror-cast",
  "uwumirror-core",
 ]
 

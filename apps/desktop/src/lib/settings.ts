@@ -54,6 +54,9 @@ export type Settings = {
   androidAudio: boolean;
   /** An adb chosen by hand; empty means "find one". */
   adbPath: string;
+
+  /** Other computers' UwUMirror may send their screen here (UwUCast). */
+  castEnabled: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -74,6 +77,7 @@ export const DEFAULT_SETTINGS: Settings = {
   androidFps: 60,
   androidAudio: true,
   adbPath: '',
+  castEnabled: true,
 };
 
 const KEY = 'uwumirror.settings';
@@ -110,6 +114,7 @@ export function sanitize(raw: unknown): Settings {
     androidFps: oneOf(input.androidFps, [30, 60] as const, d.androidFps),
     androidAudio: bool(input.androidAudio, d.androidAudio),
     adbPath: text(input.adbPath, 1024),
+    castEnabled: bool(input.castEnabled, d.castEnabled),
   };
 }
 

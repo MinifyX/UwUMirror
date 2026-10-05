@@ -1,21 +1,38 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, errorText, type AdbStatus, type AirplayStatus, type Device } from '../lib/api';
+import {
+  api,
+  errorText,
+  type AdbStatus,
+  type AirplayStatus,
+  type CastStatus,
+  type Device,
+  type SendStatus,
+} from '../lib/api';
 import { streamIcon, streamSource } from '../lib/devices';
 import { t, useLanguage } from '../lib/i18n';
 import { useSettings } from '../lib/settings';
 import type { Stream } from '../lib/streams';
 import { AirplayCard } from './AirplayCard';
 import { AndroidCard } from './AndroidCard';
+import { CastCard } from './CastCard';
 import { Icon } from './Icon';
 import { NyuScene } from './nyu/scenes';
 import { PairDialog } from './PairDialog';
+import { SendCard } from './SendCard';
 
 type Props = {
   streams: Stream[];
   receiverName: string;
+  /** This computer's name, as other computers show it when it sends. */
+  computerName: string;
   airplay: AirplayStatus | null;
+  cast: CastStatus | null;
+  /** This computer can send its screen (Windows). */
+  canSend: boolean;
+  sending: SendStatus | null;
   ffmpeg: number | null | undefined;
   onAirplayToggle: (on: boolean) => void;
+  onCastToggle: (on: boolean) => void;
   onRecheckFfmpeg: () => Promise<void>;
   onShow: (id: number) => void;
   onStop: (id: number) => void;
@@ -75,7 +92,7 @@ export function Home(props: Props) {
           </h1>
           <p className="home-text">
             {t(
-              'iPhones, iPads, Macs und Android-Handys in deinem Netzwerk zeigen ihren Bildschirm hier – ohne Cloud, ohne Konto. Eins nach dem anderen: Wer neu spiegelt, löst das Gerät davor ab.',
+              'iPhones, iPads, Macs, Android-Handys und andere Computer in deinem Netzwerk zeigen ihren Bildschirm hier – ohne Cloud, ohne Konto. Eins nach dem anderen: Wer neu spiegelt, löst das Gerät davor ab.',
             )}
           </p>
         </div>
@@ -121,6 +138,13 @@ export function Home(props: Props) {
           onShow={props.onShow}
           onRefresh={refreshAdb}
         />
+        <CastCard
+          enabled={settings.castEnabled}
+          name={props.receiverName}
+          status={props.cast}
+          onToggle={props.onCastToggle}
+        />
+        {props.canSend && <SendCard name={props.computerName} status={props.sending} />}
       </div>
 
       {pairing && <PairDialog onClose={() => setPairing(false)} />}

@@ -1,6 +1,9 @@
-//! UwUMirror's shell: starts the AirPlay receiver and the Android side, hands
-//! their streams to the page (see `hub.rs`), and offers the page its commands.
+//! UwUMirror's shell: starts the AirPlay receiver, the Android side and the
+//! UwUCast receiver, hands their streams to the page (see `hub.rs`), sends
+//! this screen elsewhere on Windows (see `cast.rs`), and offers the page its
+//! commands.
 
+mod cast;
 mod hub;
 mod log;
 
@@ -53,6 +56,7 @@ struct AppState {
     airplay: tokio::sync::Mutex<AirplayState>,
     android: Arc<Android>,
     pairing: Mutex<Option<AbortHandle>>,
+    cast: cast::Cast,
 }
 
 type Result<T> = std::result::Result<T, String>;
@@ -95,6 +99,8 @@ struct AppInfo {
     /// libavcodec's major version, when FFmpeg is on the system.
     ffmpeg: Option<u32>,
     scrcpy: &'static str,
+    /// This build can send its screen (Windows).
+    cast_send: bool,
 }
 
 #[tauri::command]
@@ -107,6 +113,7 @@ async fn app_info() -> AppInfo {
         version: env!("CARGO_PKG_VERSION"),
         ffmpeg,
         scrcpy: uwumirror_android::scrcpy::SERVER_VERSION,
+        cast_send: uwumirror_cast::CAN_SEND,
     }
 }
 
@@ -203,6 +210,9 @@ async fn stop_stream(state: &AppState, id: u64) -> bool {
         if receiver.end_stream(id) {
             return true;
         }
+    }
+    if state.cast.end_stream(id).await {
+        return true;
     }
     state.android.stop(id)
 }
@@ -380,6 +390,7 @@ pub fn run() {
                 }),
                 android,
                 pairing: Mutex::new(None),
+                cast: cast::Cast::new(),
             });
             Ok(())
         })
@@ -402,6 +413,11 @@ pub fn run() {
             android_mirror,
             android_download_adb,
             android_choose_adb,
+            cast::cast_apply,
+            cast::cast_receivers,
+            cast::cast_send,
+            cast::cast_send_status,
+            cast::cast_send_stop,
             open_link,
             log_detail,
             open_log_folder,
@@ -418,6 +434,7 @@ pub fn run() {
                 .receiver
                 .take();
             drop(receiver);
+            state.cast.shut_down();
         }
     });
 }
