@@ -1,3 +1,4 @@
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -13,6 +14,7 @@ import {
 import { useAdb, useAdbDevices } from './lib/android';
 import { t, useLanguage } from './lib/i18n';
 import { applyMiracast } from './lib/miracast';
+import { platform } from './lib/platform';
 import { getSettings, RESOLUTIONS, receiverName, useSettings } from './lib/settings';
 import { onStreamEnded, onStreamStarted, startStreams, useStreams } from './lib/streams';
 import { Home } from './components/Home';
@@ -208,10 +210,58 @@ export function App() {
     }
   }, []);
 
-  // Keyboard: Ctrl+, settings, Ctrl+0 start, Ctrl+1 the stream, F11 full screen.
+  // A Mac's menu bar: UwUMirror → Settings… (menu.rs).
+  useEffect(() => {
+    let stopped = false;
+    let unlisten: (() => void) | undefined;
+    void listen<string>('menu', (event) => {
+      if (event.payload === 'settings') setSettingsOpen((open) => open ?? 'general');
+    })
+      .then((stop) => {
+        if (stopped) stop();
+        else unlisten = stop;
+      })
+      .catch(() => undefined);
+    return () => {
+      stopped = true;
+      unlisten?.();
+    };
+  }, []);
+
+  // Full screen entered or left by the system — a Mac's green traffic light,
+  // its View menu, ⌃⌘F — and not through us: the page follows, so the title
+  // bar goes and comes back with it.
+  useEffect(() => {
+    const appWindow = getCurrentWindow();
+    let stopped = false;
+    let unlisten: (() => void) | undefined;
+    void appWindow
+      .onResized(() => {
+        void appWindow
+          .isFullscreen()
+          .then((on) => !stopped && setFullscreen(on))
+          .catch(() => undefined);
+      })
+      .then((stop) => {
+        if (stopped) stop();
+        else unlisten = stop;
+      })
+      .catch(() => undefined);
+    return () => {
+      stopped = true;
+      unlisten?.();
+    };
+  }, []);
+
+  // Keyboard: Ctrl+, settings, Ctrl+0 start, Ctrl+1 the stream, F11 full
+  // screen (on a Mac: ⌘ instead of Ctrl, and ⌃⌘F).
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const ctrl = event.ctrlKey || event.metaKey;
+      const fullscreenKey =
+        platform() === 'macos'
+          ? event.ctrlKey && event.metaKey && event.key.toLowerCase() === 'f'
+          : event.key === 'F11';
       if (ctrl && event.key === ',') {
         event.preventDefault();
         setSettingsOpen((open) => open ?? 'general');
@@ -219,7 +269,7 @@ export function App() {
         event.preventDefault();
         if (event.key === '0') setActiveId(null);
         else if (streams[0]) setActiveId(streams[0].id);
-      } else if (event.key === 'F11' && active && active.kind !== 'airplayaudio') {
+      } else if (fullscreenKey && active && active.kind !== 'airplayaudio') {
         event.preventDefault();
         setWindowFullscreen(!fullscreen);
       } else if (event.key === 'Escape' && fullscreen) {

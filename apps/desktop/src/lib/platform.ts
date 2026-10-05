@@ -1,3 +1,5 @@
+import { t } from './i18n';
+
 /**
  * Which system the app runs on, for the few words and keys that differ.
  *
@@ -24,4 +26,17 @@ export function systemName(): string {
     default:
       return 'Linux';
   }
+}
+
+/**
+ * A shortcut as the system writes it: "⌘," on a Mac, "Ctrl+," elsewhere
+ * (Strg in German). `key` is what follows the modifier.
+ */
+export function shortcut(key: string): string {
+  return platform() === 'macos' ? `⌘${key}` : `${t('Strg')}+${key}`;
+}
+
+/** The full-screen shortcut: F11 on Windows and Linux, ⌃⌘F on a Mac. */
+export function fullscreenShortcut(): string {
+  return platform() === 'macos' ? '⌃⌘F' : 'F11';
 }

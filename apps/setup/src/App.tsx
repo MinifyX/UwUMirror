@@ -130,9 +130,14 @@ function Window({
 }) {
   const control =
     'grid size-8 place-items-center rounded-full text-plum-soft hover:bg-white/80 hover:text-plum';
+  // A Mac has its own traffic lights in this bar (app.rs), at the left.
+  const mac = navigator.userAgent.toLowerCase().includes('mac');
   return (
     <div className="setup-sparkles flex h-full flex-col">
-      <header data-tauri-drag-region className="flex h-11 shrink-0 items-center gap-1 px-2">
+      <header
+        data-tauri-drag-region
+        className={clsx('flex h-11 shrink-0 items-center gap-1 px-2', mac && 'pl-[72px]')}
+      >
         <span
           data-tauri-drag-region
           className="mr-auto pl-3 text-[14px] font-extrabold tracking-tight"
@@ -147,23 +152,27 @@ function Window({
         >
           <Icon path={muted ? ICONS.soundOff : ICONS.soundOn} />
         </button>
-        <button
-          type="button"
-          className={control}
-          onClick={() => void api.minimize()}
-          aria-label={t.minimize}
-        >
-          <Icon path={ICONS.minimize} />
-        </button>
-        <button
-          type="button"
-          className={clsx(control, 'hover:bg-pink-solid! hover:text-white!')}
-          disabled={busy}
-          onClick={() => void api.finish()}
-          aria-label={t.close}
-        >
-          <Icon path={ICONS.close} />
-        </button>
+        {!mac && (
+          <>
+            <button
+              type="button"
+              className={control}
+              onClick={() => void api.minimize()}
+              aria-label={t.minimize}
+            >
+              <Icon path={ICONS.minimize} />
+            </button>
+            <button
+              type="button"
+              className={clsx(control, 'hover:bg-pink-solid! hover:text-white!')}
+              disabled={busy}
+              onClick={() => void api.finish()}
+              aria-label={t.close}
+            >
+              <Icon path={ICONS.close} />
+            </button>
+          </>
+        )}
       </header>
       <main className="flex min-h-0 flex-1 flex-col items-center px-7 pb-5">{children}</main>
     </div>

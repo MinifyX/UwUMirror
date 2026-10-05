@@ -344,9 +344,18 @@ pub fn run() {
                     .inner_size(460.0, 640.0)
                     .resizable(false)
                     .maximizable(false)
-                    .decorations(false)
                     .shadow(true)
                     .center();
+            // A Mac gets its traffic lights, laid over the page's own bar;
+            // elsewhere the page draws its buttons in a frameless window.
+            #[cfg(target_os = "macos")]
+            let window = window
+                .decorations(true)
+                .title_bar_style(tauri::TitleBarStyle::Overlay)
+                .hidden_title(true)
+                .traffic_light_position(tauri::LogicalPosition::new(16.0, 16.0));
+            #[cfg(not(target_os = "macos"))]
+            let window = window.decorations(false);
             // The page's own browser data goes to the temp folder, not next to
             // UwUMirror's. WKWebView keeps its data by bundle id and takes no folder.
             #[cfg(not(target_os = "macos"))]
@@ -354,6 +363,15 @@ pub fn run() {
                 window.data_directory(std::env::temp_dir().join("UwUMirror-Setup-WebView"));
             window.build()?;
             Ok(())
+        })
+        // The red traffic light while installing: the half-copied app must
+        // not be left behind, so the window stays until the step is done.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if *window.state::<Setup>().busy.lock().unwrap() {
+                    api.prevent_close();
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             info,

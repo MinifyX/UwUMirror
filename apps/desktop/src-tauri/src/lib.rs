@@ -7,6 +7,8 @@ mod cast;
 mod frames;
 mod hub;
 mod log;
+#[cfg(target_os = "macos")]
+mod menu;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -468,8 +470,13 @@ fn open_log_folder(app: tauri::AppHandle) -> Result<()> {
 }
 
 pub fn run() {
-    let app = tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
+    let builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+    // A Mac's menu bar; Windows and Linux have none.
+    #[cfg(target_os = "macos")]
+    let builder = builder
+        .menu(menu::build)
+        .on_menu_event(|app, event| menu::handle(app, event.id().as_ref()));
+    let app = builder
         .setup(|app| {
             log::init(&app.path().app_log_dir()?);
             let data = app.path().app_data_dir()?;

@@ -163,6 +163,13 @@ button.quiet {
   user-select: none;
 }
 
+/* A Mac: the system's traffic lights sit at the left (16 px in, see
+   tauri.macos.conf.json), and the bar ends with the gear instead of window
+   buttons. */
+.titlebar[data-platform='macos'] {
+  padding: 0 10px 0 86px;
+}
+
 .titlebar-brand {
   display: flex;
   align-items: center;

@@ -3,7 +3,7 @@ import type { AudioStatus } from '../lib/api';
 import { streamIcon, streamSource } from '../lib/devices';
 import { t, useLanguage } from '../lib/i18n';
 import { useMiracast } from '../lib/miracast';
-import { platform } from '../lib/platform';
+import { fullscreenShortcut, platform, shortcut } from '../lib/platform';
 import type { PlayerInfo } from '../lib/player';
 import type { Stream } from '../lib/streams';
 import { Icon } from './Icon';
@@ -82,7 +82,11 @@ export function StreamView({ stream, fullscreen, onToggleFullscreen, onStop, onH
   const bar = (
     <>
       {!fullscreen && (
-        <button className="quiet" onClick={onHome} title={t('Start (Strg+0)')}>
+        <button
+          className="quiet"
+          onClick={onHome}
+          title={t('Start ({shortcut})', { shortcut: shortcut('0') })}
+        >
           <Icon name="home" size={15} /> {t('Start')}
         </button>
       )}
@@ -108,7 +112,11 @@ export function StreamView({ stream, fullscreen, onToggleFullscreen, onStop, onH
         <button
           className="quiet"
           onClick={toggle}
-          title={fullscreen ? t('Vollbild verlassen (F11)') : t('Vollbild (F11)')}
+          title={
+            fullscreen
+              ? t('Vollbild verlassen ({shortcut})', { shortcut: fullscreenShortcut() })
+              : t('Vollbild ({shortcut})', { shortcut: fullscreenShortcut() })
+          }
         >
           <Icon name={fullscreen ? 'exitFullscreen' : 'fullscreen'} size={15} />{' '}
           {fullscreen ? t('Vollbild verlassen') : t('Vollbild')}

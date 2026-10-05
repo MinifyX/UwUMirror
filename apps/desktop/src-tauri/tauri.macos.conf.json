@@ -1,5 +1,23 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "UwUMirror",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 640,
+        "minHeight": 440,
+        "center": true,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 16, "y": 13 },
+        "resizable": true
+      }
+    ]
+  },
   "bundle": {
     "resources": {
       "resources/scrcpy-server": "scrcpy-server",
