@@ -2,26 +2,38 @@ import { useEffect, useState } from 'react';
 import { api, errorText, type CastReceiver, type SendStatus } from '../lib/api';
 import { t, useLanguage } from '../lib/i18n';
 import { Icon } from './Icon';
+import { Modal } from './Modal';
 import { showToast } from './Toasts';
 
 type Props = {
   /** What the receiver shows as the sender's name. */
   name: string;
   status: SendStatus | null;
+  onClose: () => void;
 };
 
-/** How often the receiver list is read while the start page shows. */
+/** How often the receiver list is read while the dialog shows. */
 const RECEIVER_POLL_MS = 3000;
 
-/** Sending this screen to another computer's UwUMirror (Windows only). */
-export function SendCard({ name, status }: Props) {
+/** Whether this computer is sending right now, or about to. */
+export function isSending(status: SendStatus | null): boolean {
+  return status?.state === 'sending' || status?.state === 'connecting';
+}
+
+/**
+ * Sending this screen to another computer's UwUMirror (Windows only): an
+ * action, not a setting, so it opens from the title bar.
+ */
+export function SendDialog({ name, status, onClose }: Props) {
   useLanguage();
   const [receivers, setReceivers] = useState<CastReceiver[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState<string | null>(null);
+  const busy = isSending(status);
 
   // Receivers come and go on the network; the list follows.
   useEffect(() => {
+    if (busy) return;
     let stopped = false;
     const poll = () =>
       void api
@@ -38,7 +50,7 @@ export function SendCard({ name, status }: Props) {
       stopped = true;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [busy]);
 
   const send = async (receiver: CastReceiver) => {
     setStarting(receiver.id);
@@ -59,22 +71,15 @@ export function SendCard({ name, status }: Props) {
 
   const stop = () => void api.castSendStop().catch((e) => showToast(errorText(e), 'error'));
 
-  const busy = status?.state === 'sending' || status?.state === 'connecting';
-
   return (
-    <section className="card" aria-labelledby="send-title">
-      <header className="card-head">
-        <span className="card-icon" aria-hidden>
-          <Icon name="screenShare" size={20} />
-        </span>
-        <div className="card-heading">
-          <h2 id="send-title">{t('Diesen Bildschirm senden')}</h2>
-          <p className="card-sub">{t('An UwUMirror auf einem anderen Computer')}</p>
-        </div>
-      </header>
+    <Modal title={t('Diesen Bildschirm senden')} onCancel={onClose}>
+      <button className="icon-button dialog-close" onClick={onClose} aria-label={t('Schließen')}>
+        <Icon name="close" size={16} />
+      </button>
+      <p className="dialog-lead">{t('An UwUMirror auf einem anderen Computer')}</p>
 
       {busy && status ? (
-        <>
+        <div className="send-active">
           <p
             className="status-line"
             data-state={status.state === 'sending' ? 'online' : 'starting'}
@@ -96,7 +101,7 @@ export function SendCard({ name, status }: Props) {
               <Icon name="stop" size={15} /> {t('Senden beenden')}
             </button>
           </div>
-        </>
+        </div>
       ) : (
         <>
           {error && (
@@ -145,6 +150,6 @@ export function SendCard({ name, status }: Props) {
           'Gesendet wird der Hauptbildschirm mit Mauszeiger und Ton. Währenddessen zeigt Windows einen gelben Rahmen um den Bildschirm.',
         )}
       </p>
-    </section>
+    </Modal>
   );
 }

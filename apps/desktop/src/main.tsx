@@ -1,4 +1,3 @@
-import '@fontsource-variable/manrope';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
@@ -9,8 +8,8 @@ import './styles/app.css';
 import './styles/home.css';
 import './styles/stream.css';
 
-// Dark by default, like the rest of the family; Settings → General switches to
-// light or follows the system, and decides about animations.
+// Light or dark as the system is, like UwUMail; Settings → General picks one,
+// and decides about animations.
 applyAppearance();
 
 const root = document.getElementById('root');

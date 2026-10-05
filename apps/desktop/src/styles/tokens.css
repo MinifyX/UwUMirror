@@ -1,12 +1,25 @@
 /*
- * UwU design tokens — taken from UwUMail unchanged, so the apps stay one
- * family. Components never use raw hex values; if a colour is missing, add a
- * token rather than inlining one.
+ * UwU design tokens — taken from UwUMail, so the apps stay one family.
+ * Components never use raw hex values; if a colour is missing, add a token
+ * rather than inlining one.
  *
  * Two pinks on purpose: white text on --uwu-pink reaches only 3.1:1, so filled
  * buttons use --uwu-pink-solid (4.5:1, WCAG AA) and the brighter brand pink
  * stays for everything that is not small text on a pink fill.
+ *
+ * Light by default; Settings → General → Colour scheme follows the system or
+ * picks one (lib/settings.ts puts data-theme on <html>).
  */
+
+/* UwU Sans: Atkinson Hyperlegible Next plus Nyu, from UwUMail (SIL OFL 1.1,
+   see assets/fonts/OFL.txt and FONTLOG.txt). Bundled — nothing from outside. */
+@font-face {
+  font-family: 'UwU Sans';
+  src: url('../assets/fonts/UwUSans[wght].woff2') format('woff2');
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   --uwu-canvas: #f8f4f6;
@@ -14,11 +27,13 @@
   --uwu-elevated: #fcf8fa;
   --uwu-ink: #1c1420;
   --uwu-muted: #716672;
+  --uwu-faint: #a69ba5;
   --uwu-hairline: #f2e8ee;
   --uwu-border: #e9dde4;
 
   --uwu-pink: #ff4d8d;
   --uwu-pink-solid: #e11d74;
+  --uwu-pink-solid-hover: #c8165f;
   --uwu-on-pink: #ffffff;
   --uwu-pink-ink: #a3154f;
   --uwu-pink-tint: #ffe4ef;
@@ -27,15 +42,24 @@
   /* Connection state. Separate from the brand hue: pink means "selected"
      everywhere else, so it must not also mean "online". */
   --uwu-online: #17796a;
+  --uwu-online-tint: #dcf3ec;
   --uwu-offline: #b3a8b3;
   --uwu-alarm: #8e5510;
+  --uwu-alarm-tint: #fdf0d6;
+
+  --uwu-shadow-float: 0 12px 32px rgb(28 20 32 / 0.12), 0 2px 8px rgb(28 20 32 / 0.06);
+  --uwu-backdrop: rgb(28 20 32 / 0.35);
 
   --uwu-radius-control: 10px;
   --uwu-radius-card: 16px;
+  --uwu-radius-dialog: 22px;
   --uwu-radius-pill: 999px;
 
-  --uwu-font: 'Manrope Variable', 'Manrope', 'Segoe UI', system-ui, sans-serif;
+  --uwu-font: 'UwU Sans', 'Segoe UI', system-ui, sans-serif;
+  --uwu-tracking: -0.008em;
   --uwu-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  color-scheme: light;
 }
 
 :root[data-theme='dark'] {
@@ -44,19 +68,28 @@
   --uwu-elevated: #241e28;
   --uwu-ink: #f8f2f6;
   --uwu-muted: #b3a8b3;
+  --uwu-faint: #7d717d;
   --uwu-hairline: #2c2430;
   --uwu-border: #3a3040;
 
   --uwu-pink: #ff7fac;
   --uwu-pink-solid: #ff7fac;
+  --uwu-pink-solid-hover: #ff9dbf;
   --uwu-on-pink: #1c1420;
   --uwu-pink-ink: #ffa3c4;
   --uwu-pink-tint: #3a1a2a;
   --uwu-pink-tint-strong: #4d2338;
 
   --uwu-online: #5cc7ac;
+  --uwu-online-tint: #123a2f;
   --uwu-offline: #6d6474;
   --uwu-alarm: #d8a25c;
+  --uwu-alarm-tint: #3a2a0c;
+
+  --uwu-shadow-float: 0 12px 32px rgb(0 0 0 / 0.45), 0 2px 8px rgb(0 0 0 / 0.3);
+  --uwu-backdrop: rgb(8 6 10 / 0.55);
+
+  color-scheme: dark;
 }
 
 /* Animations off collapses every transition to nothing and holds Nyu still. */

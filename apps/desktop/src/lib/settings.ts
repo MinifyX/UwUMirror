@@ -64,7 +64,7 @@ export type Settings = {
 
 export const DEFAULT_SETTINGS: Settings = {
   language: 'system',
-  theme: 'dark',
+  theme: 'system',
   motion: 'system',
   showNewStreams: true,
   fullscreenNewStreams: false,
@@ -86,6 +86,12 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 const KEY = 'uwumirror.settings';
+/**
+ * Bumped when a stored value means something else now. 2: the theme used to
+ * default to dark and was stored with every other change, so a stored "dark"
+ * from before is most likely nobody's choice — it follows the system now.
+ */
+const VERSION = 2;
 
 /** Stored values are checked one by one; anything unexpected falls back to its default. */
 export function sanitize(raw: unknown): Settings {
@@ -128,7 +134,13 @@ export function sanitize(raw: unknown): Settings {
 function load(): Settings {
   try {
     const raw = window.localStorage.getItem(KEY);
-    return sanitize(raw ? JSON.parse(raw) : {});
+    const stored: unknown = raw ? JSON.parse(raw) : {};
+    const old =
+      typeof stored === 'object' && stored !== null && 'theme' in stored
+        ? (stored as { version?: unknown; theme?: unknown })
+        : null;
+    if (old && old.version !== VERSION && old.theme === 'dark') old.theme = 'system';
+    return sanitize(stored);
   } catch {
     return DEFAULT_SETTINGS;
   }
@@ -144,7 +156,7 @@ export function getSettings(): Settings {
 export function updateSettings(patch: Partial<Settings>) {
   current = sanitize({ ...current, ...patch });
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(current));
+    window.localStorage.setItem(KEY, JSON.stringify({ ...current, version: VERSION }));
   } catch {
     // Private storage can be unavailable; the change still holds for this run.
   }

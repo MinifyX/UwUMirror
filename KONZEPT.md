@@ -65,8 +65,8 @@ Android-Handys. Also: ich.
   AirPlay-Audio). Fehlt FFmpeg, sagt die App, wie man es bekommt.
 - Ein Gerät nach dem anderen: Wer neu spiegelt, löst das Gerät davor ab.
 - Kein PIN: Solange der Empfang an ist, darf jedes Gerät im Netz spiegeln —
-  wie ein Apple TV auf „Alle im selben Netzwerk“. Ein Schalter auf der
-  Startseite macht ihn aus.
+  wie ein Apple TV auf „Alle im selben Netzwerk“. Ein Schalter in den
+  Einstellungen macht ihn aus.
 - PIN nur, wenn der Sender sie verlangt (Macs ab macOS Sequoia, verwaltete
   Geräte): UwUMirror zeigt vier Ziffern groß an, gekoppelt wird mit Apples
   SRP-6a (`pair-setup-pin`). Danach kennt UwUMirror den Mac
@@ -99,8 +99,8 @@ Android-Handys. Also: ich.
 **Andere Computer (UwUCast)**
 
 - Ein Windows-PC mit UwUMirror schickt seinen Bildschirm samt Ton an
-  UwUMirror auf einem anderen Computer (Windows, macOS, Linux): „Diesen
-  Bildschirm senden“, Empfänger anklicken, fertig. Kein eigenes Programm.
+  UwUMirror auf einem anderen Computer (Windows, macOS, Linux): oben auf
+  „Senden“, Empfänger anklicken, fertig. Kein eigenes Programm.
 - Eigenes kleines Protokoll (UwUCast, `_uwumirror._tcp` per mDNS, TCP 7100):
   H.264 in Annex B und rohes PCM, wie von AirPlay und Android — der Empfänger
   zeigt es wie jeden anderen Stream.
@@ -113,8 +113,21 @@ Android-Handys. Also: ich.
 
 **Anzeige**
 
-- Dunkle Bühne, Bild so groß wie es passt. Vollbild mit F11 oder Doppelklick,
-  Leiste oben wie bei mstsc. Strg+1–9 wechselt zwischen Streams.
+- Aussehen wie UwUMail: hell, dem System folgend, auf Wunsch dunkel; Schrift
+  UwU Sans, große runde Karten, ein kräftiges Pink. Keine Seitenleiste, nur
+  eine schmale Leiste oben (Nyu, „Senden“ unter Windows, Einstellungen,
+  Fensterknöpfe).
+- Die Startseite bleibt sauber: Nyu, „Bereit zum Spiegeln“, der Name, unter
+  dem Geräte den Computer finden, was gerade spiegelt („Zeigen“, „Beenden“),
+  und pro Weg (AirPlay, Miracast, kabelloses Debugging, andere Computer) eine
+  Zeile, wie es geht, mit Zustand („Bereit“, „Aus“ → zu den Einstellungen).
+  Kein Schalter, kein Formular.
+- Alle Einstellungen im großen Einstellungsdialog mit Bereichen links
+  (Allgemein, AirPlay, Miracast, Android (Debugging), Andere Computer, Über),
+  auch Koppeln und die gekoppelten Handys. Strg+, öffnet ihn.
+- Dunkle Bühne in jedem Farbschema, Bild so groß wie es passt. Vollbild mit
+  F11 oder Doppelklick, Leiste oben wie bei mstsc. Strg+0 zur Startseite,
+  Strg+1 zum Stream.
 - Neue Streams springen auf Wunsch sofort nach vorn, auch gleich im Vollbild
   (für den Beamer).
 
@@ -127,7 +140,7 @@ nur gegen simulierte Sender, siehe `docs/architecture.md`.
 
 ```
 ┌─ WebView ──────────────────────────────────────┐
-│  Startseite, Tabs, Einstellungen                │
+│  Startseite, Stream, Einstellungen              │
 │  Player pro Stream: WebCodecs → <canvas>        │
 │                oder Media Source → <video>      │
 └───────────────┬────────────────────────────────┘

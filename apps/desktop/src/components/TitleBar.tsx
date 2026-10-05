@@ -5,6 +5,7 @@ import { Nyu } from './nyu/Nyu';
 
 type Props = {
   onSettings: () => void;
+  /** Actions beside the gear, such as sending this screen. */
   children?: ReactNode;
 };
 
@@ -53,8 +54,8 @@ export function TitleBar({ onSettings, children }: Props) {
           <span>UwU</span>Mirror
         </span>
       </span>
-      {children}
       <span className="spacer" data-tauri-drag-region />
+      {children}
       <button
         className="titlebar-action"
         onClick={onSettings}

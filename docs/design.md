@@ -8,21 +8,22 @@ and otherwise keeps out of its way.
 
 ## Color
 
-Tokens come from UwUMail unchanged, including the `--uwu-*` naming, and live in
+Tokens come from UwUMail, including the `--uwu-*` naming, and live in
 `apps/desktop/src/styles/tokens.css`. Components never use raw hex values —
-except the stage, below.
+except the stage, below. Light by default, following the system; Settings →
+General → Colour scheme (System / Light / Dark) picks one.
 
-| Token              | Light     | Dark      | Use                                     |
-| ------------------ | --------- | --------- | --------------------------------------- |
-| `--uwu-canvas`     | `#f8f4f6` | `#141016` | App background                          |
-| `--uwu-surface`    | `#ffffff` | `#1c171f` | Cards, title bar, tabs                  |
-| `--uwu-elevated`   | `#fcf8fa` | `#241e28` | Hover rows, hints                       |
-| `--uwu-ink`        | `#1c1420` | `#f8f2f6` | Primary text                            |
-| `--uwu-muted`      | `#716672` | `#b3a8b3` | Secondary text                          |
-| `--uwu-pink`       | `#ff4d8d` | `#ff7fac` | **Brand.** Selection, focus, active tab |
-| `--uwu-pink-solid` | `#e11d74` | `#ff7fac` | Filled buttons with text                |
-| `--uwu-online`     | `#17796a` | `#5cc7ac` | Receiver ready, stream live             |
-| `--uwu-alarm`      | `#8e5510` | `#d8a25c` | Something needs attention               |
+| Token              | Light     | Dark      | Use                                   |
+| ------------------ | --------- | --------- | ------------------------------------- |
+| `--uwu-canvas`     | `#f8f4f6` | `#141016` | App background                        |
+| `--uwu-surface`    | `#ffffff` | `#1c171f` | Cards, dialogs, stream toolbar        |
+| `--uwu-elevated`   | `#fcf8fa` | `#241e28` | Hover rows, hints                     |
+| `--uwu-ink`        | `#1c1420` | `#f8f2f6` | Primary text                          |
+| `--uwu-muted`      | `#716672` | `#b3a8b3` | Secondary text                        |
+| `--uwu-pink`       | `#ff4d8d` | `#ff7fac` | **Brand.** Selection, focus, wordmark |
+| `--uwu-pink-solid` | `#e11d74` | `#ff7fac` | Filled buttons with text              |
+| `--uwu-online`     | `#17796a` | `#5cc7ac` | Receiver ready, stream live           |
+| `--uwu-alarm`      | `#8e5510` | `#d8a25c` | Something needs attention             |
 
 State uses semantic color, never pink: ready is mint, starting pulses pink
 (the one exception, as in UwURDP's tabs), trouble is amber.
@@ -37,36 +38,48 @@ too.
 
 ## Type, shape, space
 
-As in the family: **Manrope** (bundled) for the interface, **JetBrains Mono**
-for addresses and sizes; radius 10 px for controls, 16 px for cards, pills for
-badges; a 4 px grid; shadows only for dialogs, toasts and the full-screen bar.
+As in UwUMail: **UwU Sans** (Atkinson Hyperlegible Next with Nyu, bundled,
+SIL OFL 1.1, `apps/desktop/src/assets/fonts/`, byte-identical to UwUMail's)
+for the interface, **JetBrains Mono** for addresses and sizes; radius 10 px
+for controls, 16 px for cards, 22 px for dialogs, pills for states and badges;
+a 4 px grid; shadows only for dialogs, toasts and the full-screen bar.
 
 ## Layout
 
+No sidebar: a slim bar on top, the page under it.
+
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ ◐ UwUMirror                                   ⚙  – □ ×  │  title bar
+│ ◐ UwUMirror                      [⇪ Send]   ⚙   – □ ×   │  title bar
 ├──────────────────────────────────────────────────────────┤
-│ [⌂ Start] [📱 Lorins iPhone ×] [🤖 Pixel 8 ×]           │  tabs
-├──────────────────────────────────────────────────────────┤
-│   Nyu + "Ready to mirror"                                │
-│  ┌─ iPhone, iPad & Mac ── on ─┐ ┌─ Android ── Pair ──┐   │  start page
-│  │ ● Ready as "UwUMirror (…)" │ │ 📶 Pixel 8  Mirror │   │
-│  │ 1. 2. 3.                   │ │ How to get ready ▸ │   │
-│  └────────────────────────────┘ └────────────────────┘   │
+│   Nyu   Ready to mirror                                  │
+│         Devices find this computer as (UwUMirror (PC))   │  start page
+│  MIRRORING NOW   📱 Lorins iPhone        [Show] [Stop]   │
+│  HOW TO MIRROR HERE                                      │
+│  ┌ iPhone, iPad & Mac  AirPlay ● Ready ┐ ┌ Android … ┐   │
+│  │ Control Center → Screen Mirroring   │ │ Win+K …   │   │
+│  └─────────────────────────────────────┘ └───────────┘   │
 └──────────────────────────────────────────────────────────┘
 ```
 
-- **The start page** says in one line whether UwUMirror is ready, then two
-  cards: AirPlay (a switch, the name iPhones see, three steps, the FFmpeg hint
-  when sound can't work) and Android (the phones adb knows, each with
-  **Mirror**, and **Pair a phone**).
-- **A tab per stream**, closing a tab ends the mirroring. The device's icon
-  says iPhone, iPad, Mac, sound only or Android; a mint dot says live.
-- **The stream view**: a quiet toolbar (name, source, size, sound, full
-  screen, stop) over the stage. Waiting for the first picture shows Nyu
-  connecting; a locked phone shows a pill "paused"; an undecodable stream
-  explains what's missing.
+- **The start page stays clean**: no switches, no forms. Nyu, "Ready to
+  mirror" and the name devices look for; whatever mirrors right now with
+  **Show** and **Stop**; then one calm card per way in (AirPlay; Miracast on
+  Windows; wireless debugging; other computers), each with one line of
+  how-to and its state as a pill (Ready / Starting / Off / Problem). Off or a
+  problem links to the right settings section. Phones paired for wireless
+  debugging that are reachable get a **Mirror** button there.
+- **Settings** is UwUMail's large dialog: sections with icons on the left
+  (on top in a narrow window) — General, AirPlay, Miracast (Windows),
+  Android (debugging), Other computers, About — and rows beside them. Every
+  switch lives here, including pairing and the paired phones.
+- **Send** (Windows) sits in the title bar as a pill and opens a dialog with
+  the receivers; while sending, the pill turns pink and names the receiver.
+- **The stream view**: a quiet toolbar (Start, name, source, size, sound, full
+  screen, stop) in the theme's colours over the dark stage. Waiting for the
+  first picture shows Nyu connecting; a locked phone shows a pill "paused"; an
+  undecodable stream explains what's missing. Ctrl+0 goes back to the start
+  page, Ctrl+1 to the stream.
 - **Full screen** hides everything but the picture; a bar slides in from the
   top edge on hover, like mstsc's connection bar.
 - **Pairing** is a dialog with three ways (QR code, pairing code, address),
