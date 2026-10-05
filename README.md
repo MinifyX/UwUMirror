@@ -55,9 +55,14 @@ simple on purpose: open it, and it is ready.
   UwUMirror by itself; one click mirrors it, with sound on Android 11 and
   newer. It uses the server of [scrcpy](https://github.com/Genymobile/scrcpy),
   the best there is for this.
-- **Several at once.** Every stream gets a tab. Full screen with F11 or a
-  double click, Escape to leave it. Handy with a TV or projector on the
-  computer.
+- **A Windows PC, to another computer.** With UwUMirror on both, a Windows PC
+  sends its screen and sound to UwUMirror on another computer — Windows, macOS
+  or Linux: **Send this screen**, pick the other one, done. The picture comes
+  from the graphics card's own H.264 encoder (or Windows' own), so there is
+  nothing else to install.
+- **One at a time, big.** Whoever starts mirroring takes over from the device
+  before. Full screen with F11 or a double click, Escape to leave it. Handy
+  with a TV or projector on the computer.
 - **Your network, nothing else.** No cloud, no account, no telemetry. The
   picture goes straight from the phone to this computer, and nowhere else.
 - **Playful.** Nyu, the cat, is a hand mirror this time.
@@ -84,6 +89,9 @@ simple on purpose: open it, and it is ready.
 > - Android: pairing by QR code or pairing code, connecting by address, USB,
 >   mirroring with scrcpy 4.1's server, raw PCM sound from Android 11 on.
 >   Google's platform-tools (adb) download on request.
+> - UwUCast, from UwUMirror to UwUMirror: a Windows PC sends its main screen
+>   (pointer included) and what it plays, found by mDNS. Tested between two
+>   copies on one Windows PC, with an NVIDIA card's encoder and Windows' own.
 > - Video decoded by the system: WebCodecs where the webview has it, Media
 >   Source otherwise, switchable in the settings.
 >
@@ -126,6 +134,10 @@ then Developer options → **Wireless debugging** on → **Pair device with QR
 code**, and scan the code from **Pair a phone** in UwUMirror. After that, the
 phone is in the list whenever wireless debugging is on; click **Mirror**.
 
+**Windows PC:** UwUMirror on both computers, in the same network, with
+**Receive from other computers** on at the one that shows. On the PC, under
+**Send this screen**, click **Send** next to the other computer.
+
 ## Project layout
 
 | Path                       | What lives there                                                         |
@@ -135,6 +147,7 @@ phone is in the list whenever wireless debugging is on; click **Mirror**.
 | `crates/uwumirror-core`    | The stream model, sound output (cpal), AirPlay audio through FFmpeg      |
 | `crates/uwumirror-airplay` | The AirPlay receiver: Bonjour, RTSP, pairing, FairPlay, mirroring, sound |
 | `crates/uwumirror-android` | adb, wireless-debugging pairing, scrcpy's protocol                       |
+| `crates/uwumirror-cast`    | UwUCast: receiving from another UwUMirror, sending from Windows          |
 | `brand/`                   | Nyu: the UwUMirror icon, symbol, mono symbol, taskbar icons              |
 | `docs/`                    | Install guide, architecture, design, roadmap                             |
 | `release-notes/`           | What's new, per version                                                  |
