@@ -5031,6 +5031,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "uwumirror-cast"
+version = "0.1.0-beta.1"
+dependencies = [
+ "cpal",
+ "mdns-sd",
+ "parking_lot",
+ "rand 0.8.8",
+ "serde",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "uwumirror-core",
+ "windows 0.61.3",
+]
+
+[[package]]
 name = "uwumirror-core"
 version = "0.1.0-beta.1"
 dependencies = [

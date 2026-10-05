@@ -133,6 +133,29 @@ impl Converter {
     }
 }
 
+/// The same conversion for sound that goes elsewhere than the speakers: a
+/// sending UwUMirror turns whatever its output device mixes into the 48 kHz
+/// stereo UwUCast carries.
+pub struct Resampler(Converter);
+
+impl Resampler {
+    pub fn new(in_rate: u32, in_channels: usize, out_rate: u32, out_channels: usize) -> Self {
+        Self(Converter {
+            in_rate,
+            in_channels: in_channels.max(1),
+            out_rate,
+            out_channels: out_channels.max(1),
+            last: None,
+            t: 0.0,
+        })
+    }
+
+    /// Interleaved samples in, interleaved samples out.
+    pub fn convert(&mut self, input: &[f32]) -> Vec<f32> {
+        self.0.convert(input)
+    }
+}
+
 /// Plays one stream's sound until dropped.
 pub struct AudioPlayer {
     shared: Arc<Shared>,
