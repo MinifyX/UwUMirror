@@ -4,6 +4,7 @@ members = [
   "crates/uwumirror-core",
   "crates/uwumirror-airplay",
   "crates/uwumirror-android",
+  "crates/uwumirror-cast",
   "apps/desktop/src-tauri",
   "apps/setup/src-tauri",
 ]
@@ -19,6 +20,7 @@ rust-version = "1.89"
 uwumirror-core = { path = "crates/uwumirror-core" }
 uwumirror-airplay = { path = "crates/uwumirror-airplay" }
 uwumirror-android = { path = "crates/uwumirror-android" }
+uwumirror-cast = { path = "crates/uwumirror-cast" }
 
 anyhow = "1"
 parking_lot = "0.12"

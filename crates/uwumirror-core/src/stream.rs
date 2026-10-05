@@ -15,6 +15,8 @@ pub enum StreamKind {
     AirplayAudio,
     /// An Android phone, through scrcpy's server over adb.
     Android,
+    /// Another computer running UwUMirror, over UwUCast.
+    Cast,
 }
 
 /// What the app shows about a stream while it runs.

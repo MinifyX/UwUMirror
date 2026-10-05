@@ -63,7 +63,7 @@ Android-Handys. Also: ich.
   playfair, AES-CTR fürs Bild, AES-CBC für den Ton.
 - Ton über FFmpegs libavcodec vom System (AAC-ELD beim Spiegeln, ALAC/AAC bei
   AirPlay-Audio). Fehlt FFmpeg, sagt die App, wie man es bekommt.
-- Mehrere Geräte gleichzeitig, jedes in einem eigenen Tab.
+- Ein Gerät nach dem anderen: Wer neu spiegelt, löst das Gerät davor ab.
 - Kein PIN: Solange der Empfang an ist, darf jedes Gerät im Netz spiegeln —
   wie ein Apple TV auf „Alle im selben Netzwerk“. Ein Schalter auf der
   Startseite macht ihn aus.
@@ -78,6 +78,21 @@ Android-Handys. Also: ich.
   als rohes PCM ab Android 11.
 - adb vom System, oder Googles platform-tools auf Knopfdruck (Windows, macOS,
   Linux x64).
+
+**Andere Computer (UwUCast)**
+
+- Ein Windows-PC mit UwUMirror schickt seinen Bildschirm samt Ton an
+  UwUMirror auf einem anderen Computer (Windows, macOS, Linux): „Diesen
+  Bildschirm senden“, Empfänger anklicken, fertig. Kein eigenes Programm.
+- Eigenes kleines Protokoll (UwUCast, `_uwumirror._tcp` per mDNS, TCP 7100):
+  H.264 in Annex B und rohes PCM, wie von AirPlay und Android — der Empfänger
+  zeigt es wie jeden anderen Stream.
+- Bild über Windows.Graphics.Capture (Hauptbildschirm mit Mauszeiger), H.264
+  vom Encoder der Grafikkarte über Media Foundation (oder dem von Windows),
+  bis 1080p mit 60 bzw. 30 Bildern; Ton über WASAPI-Loopback. Kein eigener
+  Codec.
+- Empfang mit eigenem Schalter („Von anderen Computern empfangen“), offen fürs
+  lokale Netz wie AirPlay.
 
 **Anzeige**
 
@@ -104,7 +119,8 @@ nur gegen simulierte Sender, siehe `docs/architecture.md`.
 ┌───────────────┴────────────────────────────────┐
 │  Rust                                          │
 │  Hub ◄── StreamEvents ──┬── AirPlay-Empfänger  │
-│   │                     └── Android (adb+scrcpy)│
+│   │                     ├── Android (adb+scrcpy)│
+│   │                     └── UwUCast-Empfänger  │
 │   └── Ton: FFmpeg (dlopen) → cpal              │
 └───────────────┬───────────────┬────────────────┘
           Bonjour, RTSP,    adb forward,
@@ -137,4 +153,6 @@ Details, Protokolle und Tests: [`docs/architecture.md`](docs/architecture.md).
   Körper, Paketgrößen; FairPlay-Modi, bevor playfair sie als Tabellenindex
   nimmt; Pfade beim Entpacken der platform-tools.
 - Der AirPlay-Empfang ist offen für das lokale Netz (wie ein Apple TV). Wer das
-  nicht will, schaltet ihn aus; ein PIN steht auf der Roadmap.
+  nicht will, schaltet ihn aus; ein PIN steht auf der Roadmap. Für den Empfang
+  von anderen Computern (UwUCast) gilt dasselbe, mit eigenem Schalter; jede
+  Länge auf der Leitung ist begrenzt geprüft.
