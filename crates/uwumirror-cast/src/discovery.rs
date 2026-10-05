@@ -36,10 +36,13 @@ pub struct Announcement {
 
 impl Announcement {
     pub fn start(name: &str, port: u16) -> Result<Self, mdns_sd::Error> {
+        Self::start_as(instance_id(), name, port)
+    }
+
+    fn start_as(id: &str, name: &str, port: u16) -> Result<Self, mdns_sd::Error> {
         let daemon = ServiceDaemon::new()?;
         // IPv4 only, like the listener (and the AirPlay receiver's records).
         daemon.disable_interface(IfKind::IPv6)?;
-        let id = instance_id();
         let version = VERSION.to_string();
         let properties = [
             ("name", name),
@@ -166,5 +169,36 @@ impl Browser {
 impl Drop for Browser {
     fn drop(&mut self) {
         let _ = self.daemon.shutdown();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Real mDNS on this computer's network: ignored by default, because
+    /// not every machine (or CI runner) lets multicast through.
+    #[test]
+    #[ignore = "needs multicast on the local network"]
+    fn finds_another_receiver_but_not_itself() {
+        let browser = Browser::start().unwrap();
+        let _ours = Announcement::start("This one", 7101).unwrap();
+        let _other = Announcement::start_as("0123456789ab", "Wohnzimmer", 7102).unwrap();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        let found = loop {
+            if let Some(found) = browser.get("0123456789ab") {
+                break found;
+            }
+            assert!(std::time::Instant::now() < deadline, "not found in 10 s");
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        };
+        assert_eq!(found.name, "Wohnzimmer");
+        assert!(found.compatible);
+        assert_eq!(found.version, env!("CARGO_PKG_VERSION"));
+        assert_eq!(found.address.port(), 7102);
+        assert!(found.address.is_ipv4());
+        // Our own announcement is there too, but never in the list.
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        assert!(browser.receivers().iter().all(|r| r.id != instance_id()));
     }
 }
