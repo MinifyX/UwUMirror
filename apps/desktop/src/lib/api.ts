@@ -50,6 +50,16 @@ export type AirplayStatus = {
   error: string | null;
 };
 
+/** A device pairing with a PIN (`airplay/src/pin.rs`, `PairingEvent`). */
+export type AirplayPairing =
+  | { type: 'pinRequested'; pin: string; address: string }
+  | { type: 'paired'; address: string; device: string }
+  | {
+      type: 'failed';
+      address: string;
+      reason: 'wrongPin' | 'expired' | 'locked' | 'broken';
+    };
+
 export type AdbStatus = {
   path: string | null;
   version: string | null;
@@ -134,6 +144,8 @@ export const api = {
   appInfo: () => invoke<AppInfo>('app_info'),
   ffmpegRecheck: () => invoke<number | null>('ffmpeg_recheck'),
   airplayApply: (settings: AirplaySettings) => invoke<AirplayStatus>('airplay_apply', { settings }),
+  airplayTrustedDevices: () => invoke<number>('airplay_trusted_devices'),
+  airplayForgetDevices: () => invoke<void>('airplay_forget_devices'),
   streams: () => invoke<StreamState[]>('streams'),
   streamStop: (id: number) => invoke<boolean>('stream_stop', { id }),
   androidStatus: () => invoke<AdbStatus>('android_status'),
@@ -169,6 +181,11 @@ export function onStreamMessage(handler: (message: StreamMessage) => void): Prom
 /** The Miracast receiver's changes. */
 export function onMiracastStatus(handler: (status: MiracastStatus) => void): Promise<UnlistenFn> {
   return listen<MiracastStatus>('miracast', (event) => handler(event.payload));
+}
+
+/** A device asking for a PIN, and how its pairing ended. */
+export function onAirplayPairing(handler: (event: AirplayPairing) => void): Promise<UnlistenFn> {
+  return listen<AirplayPairing>('airplay-pairing', (event) => handler(event.payload));
 }
 
 /** Sending this screen: every change of state (see `src-tauri/src/cast.rs`). */

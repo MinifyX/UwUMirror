@@ -21,6 +21,7 @@ import {
 } from './lib/settings';
 import { onStreamEnded, onStreamStarted, startStreams, useStreams } from './lib/streams';
 import { Home } from './components/Home';
+import { PinPrompt } from './components/PinPrompt';
 import { SettingsDialog } from './components/SettingsDialog';
 import { StreamView } from './components/StreamView';
 import { TitleBar } from './components/TitleBar';
@@ -276,6 +277,7 @@ export function App() {
       {settingsOpen && (
         <SettingsDialog onClose={() => setSettingsOpen(false)} computer={computer} info={info} />
       )}
+      <PinPrompt />
       <Toasts />
     </div>
   );

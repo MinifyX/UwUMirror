@@ -16,5 +16,11 @@
   "AirPlay-Ton": "AirPlay audio",
   "Computer": "Computer",
   "„{name}“ hat das Senden beendet.": "“{name}” ended the stream.",
-  "Senden abgebrochen: {error}": "Sending broke off: {error}"
+  "Senden abgebrochen: {error}": "Sending broke off: {error}",
+  "Falsche PIN – das Gerät kann es gleich noch einmal versuchen.": "Wrong PIN – the device can try again right away.",
+  "Die PIN ist abgelaufen. Bitte noch einmal verbinden.": "The PIN ran out. Please connect again.",
+  "Zu viele falsche PINs. In einer Minute geht es wieder.": "Too many wrong PINs. Try again in a minute.",
+  "Das Koppeln mit PIN ist abgebrochen.": "Pairing with a PIN broke off.",
+  "Gekoppelt – {address} darf jetzt spiegeln.": "Paired – {address} may mirror now.",
+  "{address} möchte über AirPlay spiegeln. Die PIN gilt eine Minute.": "{address} wants to mirror over AirPlay. The PIN is good for one minute."
 }

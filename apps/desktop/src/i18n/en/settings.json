@@ -58,5 +58,10 @@
   "Schreibt jeden Schritt mit. Hilft, wenn etwas nicht klappt und du einen Fehler melden willst.": "Writes down every step. Helps when something doesn't work and you want to report it.",
   "Protokoll": "Log",
   "uwumirror.log, und vom Start davor uwumirror.old.log. Es bleibt auf diesem Computer.": "uwumirror.log, and uwumirror.old.log from the start before. It stays on this computer.",
-  "Ordner öffnen": "Open folder"
+  "Ordner öffnen": "Open folder",
+  "Vertraute Geräte vergessen": "Forget trusted devices",
+  "Macs, die einmal eine PIN eingegeben haben, kommen danach ohne PIN herein.": "Macs that entered a PIN once get in without one afterwards.",
+  "Macs, die einmal eine PIN eingegeben haben, kommen danach ohne PIN herein. Gekoppelt: {count}.": "Macs that entered a PIN once get in without one afterwards. Paired: {count}.",
+  "Vergessen": "Forget",
+  "Vergessen. Jeder Mac fragt beim nächsten Mal wieder nach der PIN.": "Forgotten. Every Mac asks for the PIN again next time."
 }

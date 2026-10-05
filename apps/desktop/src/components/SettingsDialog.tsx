@@ -251,6 +251,61 @@ function Airplay({ settings, computer }: { settings: Settings; computer: string 
           label={t('Ton')}
         />
       </Row>
+      <TrustedDevices />
+    </>
+  );
+}
+
+/** Macs that paired with a PIN, and a way to make them ask again. */
+function TrustedDevices() {
+  const [count, setCount] = useState<number | null>(null);
+  const [result, setResult] = useState<{ text: string; error: boolean } | null>(null);
+
+  useEffect(() => {
+    void api
+      .airplayTrustedDevices()
+      .then(setCount)
+      .catch(() => undefined);
+  }, []);
+
+  return (
+    <>
+      <Row
+        label={t('Vertraute Geräte vergessen')}
+        description={
+          count === null
+            ? t('Macs, die einmal eine PIN eingegeben haben, kommen danach ohne PIN herein.')
+            : t(
+                'Macs, die einmal eine PIN eingegeben haben, kommen danach ohne PIN herein. Gekoppelt: {count}.',
+                { count },
+              )
+        }
+      >
+        <button
+          data-secondary
+          disabled={count === 0}
+          onClick={() => {
+            setResult(null);
+            api
+              .airplayForgetDevices()
+              .then(() => {
+                setCount(0);
+                setResult({
+                  text: t('Vergessen. Jeder Mac fragt beim nächsten Mal wieder nach der PIN.'),
+                  error: false,
+                });
+              })
+              .catch((error) => setResult({ text: errorText(error), error: true }));
+          }}
+        >
+          {t('Vergessen')}
+        </button>
+      </Row>
+      {result && (
+        <p className="setting-result" data-tone={result.error ? 'error' : undefined}>
+          {result.text}
+        </p>
+      )}
     </>
   );
 }
