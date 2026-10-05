@@ -23,5 +23,11 @@
   "Zu viele falsche PINs. In einer Minute geht es wieder.": "Too many wrong PINs. Try again in a minute.",
   "Das Koppeln mit PIN ist abgebrochen.": "Pairing with a PIN broke off.",
   "Gekoppelt – {address} darf jetzt spiegeln.": "Paired – {address} may mirror now.",
-  "{address} möchte über AirPlay spiegeln. Die PIN gilt eine Minute.": "{address} wants to mirror over AirPlay. The PIN is good for one minute."
+  "{address} möchte über AirPlay spiegeln. Die PIN gilt eine Minute.": "{address} wants to mirror over AirPlay. The PIN is good for one minute.",
+  "{name}: Das Bild kam nicht an. Wahrscheinlich hält die Firewall es auf.": "{name}: The picture didn't arrive. The firewall is probably holding it back.",
+  "Firewall einrichten": "Set up firewall",
+  "Firewall eingerichtet. Verbinde {name} neu.": "Firewall set up. Connect {name} again.",
+  "Wartet…": "Waiting…",
+  "Eingerichtet, aber eine andere Regel blockiert UwUMirror noch.": "Set up, but another rule still blocks UwUMirror.",
+  "Abgebrochen. Ohne Administratorrechte bleibt die Firewall, wie sie ist.": "Cancelled. Without administrator rights the firewall stays as it is."
 }

@@ -5172,6 +5172,7 @@ dependencies = [
  "uwumirror-android",
  "uwumirror-cast",
  "uwumirror-core",
+ "uwumirror-firewall",
  "uwumirror-miracast",
  "webview2-com",
  "windows-core 0.62.2",

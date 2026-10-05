@@ -95,6 +95,11 @@
   margin: 0;
 }
 
+/* A way out of a wait, such as setting up the firewall. */
+.stage-action {
+  margin: 10px 0 2px;
+}
+
 .stage-scene {
   width: 220px;
   margin-bottom: 10px;
