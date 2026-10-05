@@ -398,6 +398,9 @@ jobs:
   arch:
     name: makepkg (${{ matrix.name }})
     needs: installers
+    # Only the Linux x64 .deb matters here: a failed Windows or macOS build
+    # must not hide whether the Arch package still works.
+    if: ${{ !cancelled() }}
     strategy:
       fail-fast: false
       matrix:
