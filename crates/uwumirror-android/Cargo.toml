@@ -20,7 +20,7 @@ tokio.workspace = true
 tracing.workspace = true
 # Google's platform-tools (adb), fetched from Google only when asked to.
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
