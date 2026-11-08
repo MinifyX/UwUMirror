@@ -17,6 +17,6 @@
     "build:setup": "node scripts/build-setup.mjs"
   },
   "devDependencies": {
-    "prettier": "^3.3.3"
+    "prettier": "^3.9.10"
   }
 }
