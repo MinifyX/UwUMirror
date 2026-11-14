@@ -8,6 +8,7 @@ import './styles/tokens.css';
 import './styles/app.css';
 import './styles/home.css';
 import './styles/stream.css';
+import './styles/motion.css';
 
 // Dark by default, like the rest of the family; Settings → General switches to
 // light or follows the system, and decides about animations.

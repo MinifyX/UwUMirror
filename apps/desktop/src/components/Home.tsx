@@ -66,7 +66,7 @@ export function Home(props: Props) {
 
   const { streams } = props;
   return (
-    <div className="home">
+    <div className="home uwu-page">
       <section className="home-hero">
         <NyuScene name={streams.length > 0 ? 'connecting' : 'waiting'} className="home-scene" />
         <div>
@@ -106,7 +106,7 @@ export function Home(props: Props) {
         </section>
       )}
 
-      <div className="cards">
+      <div className="cards uwu-stagger">
         <AirplayCard
           enabled={settings.airplayEnabled}
           name={props.receiverName}

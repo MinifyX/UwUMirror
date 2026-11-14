@@ -47,7 +47,7 @@ export function TitleBar({ onSettings, children }: Props) {
 
   return (
     <header className="titlebar" data-tauri-drag-region>
-      <span className="titlebar-brand" data-tauri-drag-region>
+      <span className="titlebar-brand" data-tauri-drag-region data-uwu-reveal-origin>
         <Nyu size={22} blink={false} title="UwUMirror" />
         <span className="wordmark" data-tauri-drag-region>
           <span>UwU</span>Mirror

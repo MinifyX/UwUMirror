@@ -4991,7 +4991,7 @@ dependencies = [
 
 [[package]]
 name = "uwumirror-airplay"
-version = "0.1.0-beta.1"
+version = "0.1.0-beta.2"
 dependencies = [
  "aes",
  "cbc",
@@ -5013,7 +5013,7 @@ dependencies = [
 
 [[package]]
 name = "uwumirror-android"
-version = "0.1.0-beta.1"
+version = "0.1.0-beta.2"
 dependencies = [
  "mdns-sd",
  "parking_lot",
@@ -5030,7 +5030,7 @@ dependencies = [
 
 [[package]]
 name = "uwumirror-core"
-version = "0.1.0-beta.1"
+version = "0.1.0-beta.2"
 dependencies = [
  "cpal",
  "libloading 0.8.9",
@@ -5042,7 +5042,7 @@ dependencies = [
 
 [[package]]
 name = "uwumirror-desktop"
-version = "0.1.0-beta.1"
+version = "0.1.0-beta.2"
 dependencies = [
  "parking_lot",
  "serde",
@@ -5060,7 +5060,7 @@ dependencies = [
 
 [[package]]
 name = "uwumirror-setup"
-version = "0.1.0-beta.1"
+version = "0.1.0-beta.2"
 dependencies = [
  "libc",
  "serde",
