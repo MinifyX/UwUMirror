@@ -57,8 +57,14 @@
   --uwu-i: 8;
 }
 
+/* The pill's containing block. Layered, so a nav that is fixed or sticky keeps its position. */
+@layer motion {
+  :where([data-uwu-indicator]) {
+    position: relative;
+  }
+}
+
 [data-uwu-indicator] {
-  position: relative;
   isolation: isolate;
 }
 
