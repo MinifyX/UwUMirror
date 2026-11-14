@@ -2,6 +2,7 @@ import { streamIcon } from '../lib/devices';
 import { t, useLanguage } from '../lib/i18n';
 import type { Stream } from '../lib/streams';
 import { Icon } from './Icon';
+import { NavIndicator } from './NavIndicator';
 
 type Props = {
   streams: Stream[];
@@ -77,6 +78,7 @@ export function TabBar({ streams, activeId, onSelect, onStop }: Props) {
             </div>
           );
         })}
+        <NavIndicator active=".tab[data-active='true']" />
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import {
   updateSettings,
   useSettings,
 } from './lib/settings';
+import { revealFrom } from './lib/motion';
 import { onStreamEnded, onStreamStarted, startStreams, useStreams } from './lib/streams';
 import { Home } from './components/Home';
 import { SettingsDialog } from './components/SettingsDialog';
@@ -16,6 +17,9 @@ import { StreamView } from './components/StreamView';
 import { TabBar } from './components/TabBar';
 import { TitleBar } from './components/TitleBar';
 import { showToast, Toasts } from './components/Toasts';
+
+/** StrictMode runs effects twice; the reveal plays once per start. */
+let revealed = false;
 
 export function App() {
   useLanguage();
@@ -30,6 +34,12 @@ export function App() {
   const activeRef = useRef(activeId);
   activeRef.current = activeId;
   const backgroundRef = useRef<HTMLDivElement>(null);
+
+  // Cold start: the window opens in a circle from Nyu in the title bar, once.
+  useEffect(() => {
+    if (!revealed && backgroundRef.current) revealFrom(backgroundRef.current);
+    revealed = true;
+  }, []);
 
   // Behind an open dialog the window can't be clicked or tabbed into.
   useEffect(() => {

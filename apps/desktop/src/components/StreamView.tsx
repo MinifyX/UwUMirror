@@ -104,7 +104,7 @@ export function StreamView({ stream, fullscreen, onToggleFullscreen, onStop }: P
   );
 
   return (
-    <div className="stream" data-fullscreen={fullscreen}>
+    <div className="stream uwu-page" data-fullscreen={fullscreen}>
       {fullscreen ? (
         <div className="fullscreen-bar">{bar}</div>
       ) : (

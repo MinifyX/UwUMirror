@@ -1,0 +1,4 @@
+{
+  "de": "- Bewegung: Beim Start öffnet sich das Fenster in einem Kreis aus Nyu, der aktive Tab gleitet zum nächsten, die Startseite und die Karten blenden sanft ein. Wer in Einstellungen → Allgemein die Animationen ausschaltet oder im System weniger Bewegung wählt, sieht alles ruhig\n- Abhängigkeiten aktualisiert\n- Weiterhin ungetestet auf echten Geräten – ein Issue mit dem Protokoll hilft sehr",
+  "en": "- Motion: at start the window opens in a circle from Nyu, the active tab slides over to the next one, the start page and its cards fade in gently. Switch animations off in Settings → General, or ask your system for less motion, and everything stays still\n- Updated dependencies\n- Still not tried on real devices – an issue with the log helps a lot"
+}
