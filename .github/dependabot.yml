@@ -66,6 +66,9 @@ updates:
       - dependency-name: '*'
         update-types:
           - version-update:semver-major
+      # 2.12 rejects a pre-release version ("0.1.0-beta.3") when it builds the .rpm.
+      - dependency-name: '@tauri-apps/cli'
+        versions: ['>=2.12.0']
     groups:
       desktop:
         update-types:
@@ -80,6 +83,9 @@ updates:
       - dependency-name: '*'
         update-types:
           - version-update:semver-major
+      # 2.12 rejects a pre-release version ("0.1.0-beta.3") when it builds the .rpm.
+      - dependency-name: '@tauri-apps/cli'
+        versions: ['>=2.12.0']
     groups:
       setup:
         update-types:
