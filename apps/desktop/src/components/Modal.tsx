@@ -23,7 +23,7 @@ const stack: HTMLElement[] = [];
 /**
  * A dialog. Escape cancels, a click beside it doesn't; focus moves into the
  * dialog on open, stays inside it while it is open, and goes back where it was
- * on close.
+ * on close. The window behind it is inert meanwhile.
  *
  * Focus always lands somewhere inside — when nothing should be focused, the
  * dialog itself takes it. Focus left behind lets Enter activate whatever was
@@ -61,6 +61,15 @@ export function Modal({
     first.focus();
     stack.push(dialog);
 
+    // The rest of the window goes inert, like the overlays in @uwusuite/design: no clicks,
+    // no focus, and screen readers skip it. Only what was not inert already is set and later
+    // freed, so a dialog opened from another one nests.
+    const backdrop = dialog.parentElement;
+    const inerted = [...document.body.children].filter(
+      (el) => el !== backdrop && !el.hasAttribute('inert'),
+    );
+    for (const el of inerted) el.setAttribute('inert', '');
+
     const onKey = (event: KeyboardEvent) => {
       if (stack[stack.length - 1] !== dialog) return;
       if (event.key === 'Escape') {
@@ -94,6 +103,7 @@ export function Modal({
     return () => {
       window.removeEventListener('keydown', onKey);
       stack.splice(stack.indexOf(dialog), 1);
+      for (const el of inerted) el.removeAttribute('inert');
       previous?.focus();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

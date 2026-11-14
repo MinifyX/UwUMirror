@@ -1,0 +1,4 @@
+{
+  "de": "- Dialoge: Solange Einstellungen oder das Koppeln offen sind, ist das Fenster dahinter gesperrt – kein versehentlicher Klick, und Screenreader lesen nur den Dialog vor\n- Weiterhin ungetestet auf echten Geräten – ein Issue mit dem Protokoll hilft sehr",
+  "en": "- Dialogs: while Settings or pairing is open, the window behind it is locked – no stray clicks, and screen readers read only the dialog\n- Still not tried on real devices – an issue with the log helps a lot"
+}
